@@ -681,6 +681,9 @@ void webpg::init()
         : (engine_info->protocol == GPGME_PROTOCOL_CMS) ? "CMS"
         : (engine_info->protocol == GPGME_PROTOCOL_GPGCONF) ? "GPGCONF"
         : (engine_info->protocol == GPGME_PROTOCOL_ASSUAN) ? "Assuan"
+        : (engine_info->protocol == GPGME_PROTOCOL_G13) ? "G13"
+        : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "UISERVER"
+        : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "DEFAULT"
         : "UNKNOWN";
 
     response[proto_name] = protocol_info;
