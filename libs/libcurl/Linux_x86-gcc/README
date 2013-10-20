@@ -1,0 +1,3 @@
+version: 7.33.0-DEV
+configure flags: --disable-shared --enable-static --without-libidn --disable-ldaps --disable-ldap --without-libssh2 --without-libmetalink --disable-ntlm-wb --without-ssl --without-polarssl --with-cyassl --with-zlib CPPFLAGS="-I/tmp/lib/include" LIBS="-L/tmp/lib/lib" CFLAGS=-DSIZEOF_LONG_LONG=8
+architecture: i386
