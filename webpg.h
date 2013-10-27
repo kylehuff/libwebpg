@@ -2,7 +2,6 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
-#include <unistd.h>
 #include <cerrno>
 #include <assert.h>
 
