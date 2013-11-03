@@ -86,7 +86,6 @@ LIBDIR=$(CURDIR)/build/lib
 LDFLAGS:=$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a \
   $(PROJECT_ROOT)/libs/libgpg-error/$(DISTDIR)/libgpg-error.a \
   $(PROJECT_ROOT)/libs/libassuan/$(DISTDIR)/libassuan.a \
-  $(PROJECT_ROOT)/libs/boost/lib/$(DISTDIR)/libboost_regex.a \
   $(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a
 
 CFLAGS += -I $(PROJECT_ROOT)/libs/boost/include \
