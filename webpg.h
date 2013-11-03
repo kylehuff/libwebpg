@@ -4,11 +4,11 @@
 #include <fstream>
 #include <cerrno>
 #include <assert.h>
+#include <string.h>
 
 #define BOOST_THREAD_USE_LIB
 // BOOST includes
 #include <boost/optional.hpp>
-#include <boost/regex.hpp>
 #include <boost/archive/iterators/binary_from_base64.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/archive/iterators/remove_whitespace.hpp>
@@ -19,11 +19,19 @@
 #ifndef H_LIBWEBPG
 #define H_LIBWEBPG
 
+#ifdef HAVE_W32_SYSTEM
+#ifdef _WIN64
+typedef __int64 ssize_t;
+#else
+typedef int ssize_t;
+#endif
+#endif
+
 // remove?
 typedef char* (*TYPE_webpg)(void);
 
 // Used for allowing caller to assign a callback method
-typedef void (*CALLBACK)(const char*);
+typedef void (*EXTERN_FNC_CB)(const char*);
 typedef void (*PROGRESS_CB)(const char*, const char*);
 
 typedef struct {

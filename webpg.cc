@@ -615,7 +615,6 @@ webpg::webpg()
 ///////////////////////////////////////////////////////////////////////////////
 webpg::~webpg()
 {
-  std::cout << "Destructor called" << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -4258,7 +4257,6 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   gpgme_key_t key = NULL;
   gpgme_user_id_t uid;
   Json::Value response;
-  boost::regex uat_exp("^uat:");
   size_t out_size = 0;
   int nuids = 0;
 
@@ -4284,21 +4282,20 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
 
   response["photos_provided"] = 0;
 
-  if (out_buf.find("uat:") == std::string::npos)
+  std::string s = "uat:";
+
+  if (out_buf.find(s) == std::string::npos)
     return response;
 
-  for (nuids=0, uid=key->uids; uid; uid = uid->next) {
+  for (nuids=0, uid=key->uids; uid; uid = uid->next)
     nuids++;
-  }
 
-  boost::sregex_token_iterator i(out_buf.begin(), out_buf.end(), uat_exp, 0);
-  boost::sregex_token_iterator j;
   int photo_count = 0;
   Json::Value photos_map;
 
-  while(i != j) {
+  for (size_t offset = out_buf.find(s); offset != std::string::npos;
+	   offset = out_buf.find(s, offset + s.length())) {
     photo_count++;
-    i++;
     Json::Value photo_map;
     photo_map["relative_index"] = photo_count - 1;
     photo_map["absolute_index"] = nuids + photo_count;
@@ -4315,7 +4312,7 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
 }
 
 // exported methods
-extern "C" const char* webpg_status_r(CALLBACK callback) {
+extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.webpg_status_map.toStyledString();
 
@@ -4326,7 +4323,7 @@ extern "C" const char* webpg_status_r(CALLBACK callback) {
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getPublicKeyList_r(CALLBACK callback) {
+extern "C" const char* getPublicKeyList_r(EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.getPublicKeyList().toStyledString();
 
@@ -4337,7 +4334,7 @@ extern "C" const char* getPublicKeyList_r(CALLBACK callback) {
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getPrivateKeyList_r(CALLBACK callback) {
+extern "C" const char* getPrivateKeyList_r(EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.getPrivateKeyList().toStyledString();
 
@@ -4348,7 +4345,7 @@ extern "C" const char* getPrivateKeyList_r(CALLBACK callback) {
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getNamedKey_r(const char* name, CALLBACK callback) {
+extern "C" const char* getNamedKey_r(const char* name, EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.getNamedKey(name).toStyledString();
 
@@ -4359,7 +4356,7 @@ extern "C" const char* getNamedKey_r(const char* name, CALLBACK callback) {
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getExternalKey_r(const char* name, CALLBACK callback) {
+extern "C" const char* getExternalKey_r(const char* name, EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.getExternalKey(name).toStyledString();
 
@@ -4372,7 +4369,7 @@ extern "C" const char* getExternalKey_r(const char* name, CALLBACK callback) {
 
 extern "C" const char* gpgSetPreference_r(const char* preference,
                                           const char* pref_value,
-                                          CALLBACK callback) {
+                                          EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.gpgSetPreference(preference, pref_value).toStyledString();
 
@@ -4384,7 +4381,7 @@ extern "C" const char* gpgSetPreference_r(const char* preference,
 }
 
 extern "C" const char* gpgGetPreference_r(const char* preference,
-                                          CALLBACK callback) {
+                                          EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.gpgGetPreference(preference).toStyledString();
 
@@ -4397,7 +4394,7 @@ extern "C" const char* gpgGetPreference_r(const char* preference,
 
 extern "C" const char* gpgSetGroup_r(const char* group,
                                      const char* group_value,
-                                     CALLBACK callback) {
+                                     EXTERN_FNC_CB callback) {
   webpg webpg;
   fnOutputString = webpg.gpgSetGroup(group, group_value).toStyledString();
 
@@ -4411,7 +4408,7 @@ extern "C" const char* gpgSetGroup_r(const char* group,
 extern "C" const char* gpgEncrypt_r(const char* data,
                                     const char* enc_to_keyids[],
                                     int key_count,
-                                    CALLBACK callback) {
+                                    EXTERN_FNC_CB callback) {
   webpg webpg;
   Json::Value _enc_to_keyids;
 
@@ -4434,7 +4431,7 @@ extern "C" const char* gpgEncryptSign_r(const char* data,
                                         int key_count,
                                         const char* signers[],
                                         int signer_count,
-                                        CALLBACK callback) {
+                                        EXTERN_FNC_CB callback) {
   webpg webpg;
   Json::Value _enc_to_keyids, _signers;
 
@@ -4460,7 +4457,7 @@ extern "C" const char* gpgSignText_r(const char* data,
                                      const char* signers[],
                                      int key_count,
                                      int sign_mode,
-                                     CALLBACK callback) {
+                                     EXTERN_FNC_CB callback) {
   webpg webpg;
   Json::Value _signers;
 
@@ -4525,8 +4522,8 @@ int main() {
 //  std::cout << webpg.gpgDeletePrivateSubKey("74F62F6606FEA30D", 3) << std::endl;
 //  std::cout << webpg.gpgChangePassphrase("74F62F6606FEA30D") << std::endl;
 //  webpg.gpgShowPhoto("74F62F6606FEA30D");
-  std::cout << webpg.gpgSymmetricEncrypt("salkdfjlkjsdaflksdjxclkvjsdflkJ", true, recipients) << std::endl;
-//  std::cout << webpg.gpgGetPhotoInfo("74F62F6606FEA30D") << std::endl;
+//  std::cout << webpg.gpgSymmetricEncrypt("salkdfjlkjsdaflksdjxclkvjsdflkJ", true, recipients) << std::endl;
+  std::cout << webpg.gpgGetPhotoInfo("0F2B4DB23C713FED") << std::endl;
 //  std::string imagedata = "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";
 //  std::cout << webpg.gpgAddPhoto("74F62F6606FEA30D", "myphoto.jpg", imagedata);
   return 0;
