@@ -4723,9 +4723,10 @@ int main(int argc, char* argv[]) {
                 << char(((a>>16) & 0xFF))
                 << char(((a>>24) & 0xFF));
     } else {
-      ret = res.toStyledString();
+      if (parseResult == true)
+        ret = res.toStyledString();
     }
-    
+
     std::cout << ret;
   }
 
