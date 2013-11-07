@@ -4502,13 +4502,165 @@ void mycallback (const char* x, const char* y) {
   std::cout << "X: " << x << " Y: " << y << std::endl;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
   webpg webpg;
-  std::cout << webpg.get_webpg_status() << std::endl;
-  Json::Value recipients;
-  recipients.append("0DF9C95C3BE1A023");
-  Json::Value res = webpg.gpgEncrypt("sa;dlkjfsalkdjflksadjfslkjfsdaflkjsdaf", recipients, false, NULL);
-  std::cout << res << std::endl;
+  std::ofstream tmp_file("/tmp/nativeInput");
+  if (!tmp_file)
+    std::cout << "error opening temp_file" << std::endl;
+
+  if (argv[1] != NULL) {
+    std::string argv1 = argv[1];
+    if (argv1.find("chrome-extension://") != std::string::npos) {
+      std::string inp;
+      unsigned int a, c, i, t;
+      t = 0;
+      for (i = 0; i <= 3; i++) {
+        t += getchar();
+      }
+      for (i=0; i < t; i++) {
+        c = getchar();
+        inp += c;
+      }
+      Json::Value input_json;
+      Json::Reader _action_reader;
+      if (false == (_action_reader.parse (inp, input_json))) {
+        exit(1);
+      }
+      if (input_json.isMember("func") == true) {
+        std::string func = input_json["func"].asString();
+        Json::Value params = input_json["params"];
+        Json::Value res;
+        if (func == "get_webpg_status") {
+          res = webpg.get_webpg_status();
+        } else if (func == "getNamedKey") {
+          res = webpg.getNamedKey(params[0].asString());
+        } else if (func == "getPublicKeyList") {
+          res = webpg.getPublicKeyList();
+        } else if (func == "getPrivateKeyList") {
+          res = webpg.getPrivateKeyList();
+        } else if (func == "getExternalKey") {
+          res = webpg.getExternalKey(params[0].asString());
+        } else if (func == "gpgSetPreference") {
+          res = webpg.gpgSetPreference(params[0].asString(), params[1].asString());
+        } else if (func == "gpgGetPreference") {
+          res = webpg.gpgGetPreference(params[0].asString());
+        } else if (func == "gpgSetGroup") {
+          res = webpg.gpgSetGroup(params[0].asString(), params[1].asString());
+        } else if (func == "gpgSetHomeDir") {
+          res = webpg.gpgSetHomeDir(params[0].asString());
+        } else if (func == "gpgGetHomeDir") {
+          res = webpg.gpgGetHomeDir();
+        } else if (func == "gpgSetBinary") {
+          res = webpg.gpgSetBinary(params[0].asString());
+        } else if (func == "gpgGetBinary") {
+          res = webpg.gpgGetBinary();
+        } else if (func == "gpgSetGPGConf") {
+          res = webpg.gpgSetGPGConf(params[0].asString());
+        } else if (func == "gpgGetGPGConf") {
+          res = webpg.gpgGetGPGConf();
+        } else if (func == "gpgEncrypt") {
+          res = webpg.gpgEncrypt(params[0].asString(), params[1], params[2].asBool(), params[3]);
+        } else if (func == "gpgSymmetricEncrypt") {
+          res = webpg.gpgSymmetricEncrypt(params[0].asString(), params[1].asBool(), params[2]);
+        } else if (func == "gpgDecrypt") {
+          res = webpg.gpgDecrypt(params[0].asString());
+        } else if (func == "gpgVerify") {
+          res = webpg.gpgVerify(params[0].asString(), params[1].asString());
+        } else if (func == "gpgSignText") {
+          res = webpg.gpgSignText(params[0].asString(), params[1], params[2].asInt());
+        } else if (func == "gpgSignUID") {
+          res = webpg.gpgSignUID(params[0].asString(), params[1].asInt(), params[2].asString(), params[3].asInt(), params[4].asInt(), params[5].asInt(), params[6].asString(), params[7].asString());
+        } else if (func == "gpgDeleteUIDSign") {
+          res = webpg.gpgDeleteUIDSign(params[0].asString(), params[1].asInt(), params[2].asInt());
+        } else if (func == "gpgEnableKey") {
+          res = webpg.gpgEnableKey(params[0].asString());
+        } else if (func == "gpgDisableKey") {
+          res = webpg.gpgDisableKey(params[0].asString());
+        } else if (func == "gpgGenKey") {
+          res = webpg.gpgGenKey(params[0].asString(), params[1].asString(), params[2].asString(), params[3].asString(), params[4].asString(), params[5].asString(), params[6].asString(), params[7].asString(), params[8].asString(), NULL);
+        } else if (func == "gpgGenSubKey") {
+          res = webpg.gpgGenSubKey(params[0].asString(), params[1].asString(), params[2].asString(), params[3].asString(), params[4].asBool(), params[5].asBool(), params[6].asBool(), NULL);
+        } else if (func == "gpgImportKey") {
+          res = webpg.gpgImportKey(params[0].asString());
+        } else if (func == "gpgImportExternalKey") {
+          res = webpg.gpgImportExternalKey(params[0].asString());
+        } else if (func == "gpgDeletePublicKey") {
+          res = webpg.gpgDeletePublicKey(params[0].asString());
+        } else if (func == "gpgDeletePrivateKey") {
+          res = webpg.gpgDeletePrivateKey(params[0].asString());
+        } else if (func == "gpgDeletePrivateSubKey") {
+          res = webpg.gpgDeletePrivateSubKey(params[0].asString(), params[1].asInt());
+        } else if (func == "gpgSetKeyTrust") {
+          res = webpg.gpgSetKeyTrust(params[0].asString(), params[1].asInt());
+        } else if (func == "gpgAddUID") {
+          res = webpg.gpgAddUID(params[0].asString(), params[1].asString(), params[2].asString(), params[3].asString());
+        } else if (func == "gpgDeleteUID") {
+          res = webpg.gpgDeleteUID(params[0].asString(), params[0].asInt());
+        } else if (func == "gpgSetPrimaryUID") {
+          res = webpg.gpgSetPrimaryUID(params[0].asString(), params[1].asInt());
+        } else if (func == "gpgSetSubkeyExpire") {
+          res = webpg.gpgSetSubkeyExpire(params[0].asString(), params[1].asInt(), params.asInt());
+        } else if (func == "gpgSetPubkeyExpire") {
+          res = webpg.gpgSetPubkeyExpire(params[0].asString(), params[1].asInt());
+        } else if (func == "gpgExportPublicKey") {
+          res = webpg.gpgExportPublicKey(params[0].asString());
+        } else if (func == "gpgPublishPublicKey") {
+          res = webpg.gpgPublishPublicKey(params[0].asString());
+        } else if (func == "gpgRevokeKey") {
+          res = webpg.gpgRevokeKey(params[0].asString(), params[1].asInt(), params[2].asInt(), params[3].asString());
+        } else if (func == "gpgRevokeUID") {
+          res = webpg.gpgRevokeUID(params[0].asString(), params[1].asInt(), params[2].asInt(), params[3].asString());
+        } else if (func == "gpgRevokeSignature") {
+          res = webpg.gpgRevokeSignature(params[0].asString(), params[1].asInt(), params[2].asInt(), params[3].asInt(), params[4].asString());
+        } else if (func == "gpgChangePassphrase") {
+          res = webpg.gpgChangePassphrase(params[0].asString());
+        } else if (func == "gpgShowPhoto") {
+          webpg.gpgShowPhoto(params[0].asString());
+          res["error"] = false;
+        } else if (func == "gpgAddPhoto") {
+          res = webpg.gpgAddPhoto(params[0].asString(), params[1].asString(), params[2].asString());
+        } else if (func == "gpgGetPhotoInfo") {
+          res = webpg.gpgGetPhotoInfo(params[0].asString());
+        } else if (func == "setTempGPGOption") {
+          res = webpg.setTempGPGOption(params[0].asString(), params[1].asString());
+        } else if (func == "restoreGPGConfig") {
+          res = webpg.restoreGPGConfig();
+        } else if (func == "getTemporaryPath") {
+          res = webpg.getTemporaryPath();
+        } else {
+          res = get_error_map(__func__,
+                              GPG_ERR_UNKNOWN_COMMAND,
+                              __LINE__,
+                              __FILE__);
+        }
+
+        Json::FastWriter writer;
+        std::string ret = writer.write(res);
+
+        a = ret.length();
+        std::cout << char(((a>>0) & 0xFF))
+                  << char(((a>>8) & 0xFF))
+                  << char(((a>>16) & 0xFF))
+                  << char(((a>>24) & 0xFF))
+                  << ret
+                  << std::endl;
+      }
+    }
+  }
+
+  tmp_file << argv[0]
+           << "; " << argv[1]
+           << ";" << std::endl;
+
+
+//  std::cout.rdbuf(backup);        // restore cout's original streambuf
+
+  tmp_file.close();
+
+//  Json::Value recipients;
+//  recipients.append("0DF9C95C3BE1A023");
+//  Json::Value res = webpg.gpgEncrypt("sa;dlkjfsalkdjflksadjfslkjfsdaflkjsdaf", recipients, false, NULL);
+//  std::cout << res << std::endl;
 //  std::cout << webpg.gpgSignUID("0DF9C95C3BE1A023", 1, "74F62F6606FEA30D", 1, 1, 1) << std::endl;
 //  std::cout << webpg.gpgDeleteUIDSign("0DF9C95C3BE1A023", 1, 2) << std::endl;
 //  std::cout << webpg.gpgEnableKey("74F62F6606FEA30D") << std::endl;
@@ -4523,7 +4675,7 @@ int main() {
 //  std::cout << webpg.gpgChangePassphrase("74F62F6606FEA30D") << std::endl;
 //  webpg.gpgShowPhoto("74F62F6606FEA30D");
 //  std::cout << webpg.gpgSymmetricEncrypt("salkdfjlkjsdaflksdjxclkvjsdflkJ", true, recipients) << std::endl;
-  std::cout << webpg.gpgGetPhotoInfo("0F2B4DB23C713FED") << std::endl;
+//  std::cout << webpg.gpgGetPhotoInfo("0F2B4DB23C713FED") << std::endl;
 //  std::string imagedata = "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";
 //  std::cout << webpg.gpgAddPhoto("74F62F6606FEA30D", "myphoto.jpg", imagedata);
   return 0;
