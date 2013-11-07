@@ -5,7 +5,7 @@ Created:    Jan 14, 2011
 License:    GNU General Public License, version 2
             http://www.gnu.org/licenses/gpl-2.0.html
 
-Copyright 2011 Kyle L. Huff, CURETHEITCH development team
+Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 \**********************************************************/
 
 #include "webpg.h"
