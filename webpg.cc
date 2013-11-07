@@ -4310,6 +4310,8 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   return response;
 }
 
+
+#ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
 // exported methods
 extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
   webpg webpg;
@@ -4496,8 +4498,9 @@ extern "C" const char* gpgGenSubKey_r(const char* keyid,
   return fnOutputString.c_str();
 }
 // end exported methods
+#endif // H_LIBWEBPG
 
-#ifndef H_WEBPGLIB
+#ifndef H_LIBWEBPG // Do not include this method when compiling the lib
 int main(int argc, char* argv[]) {
   webpg webpg;
 
@@ -4732,4 +4735,4 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
-#endif
+#endif // H_LIBWEBPG

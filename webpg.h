@@ -24,9 +24,6 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #include <gpgme.h>
 #include "libs/jsoncpp/include/json/json.h"
 
-#ifndef H_LIBWEBPG
-#define H_LIBWEBPG
-
 #ifdef HAVE_W32_SYSTEM
 #ifdef _WIN64
 typedef __int64 ssize_t;
@@ -889,5 +886,3 @@ private:
   // Private constructs
 
 };
-
-#endif // H_LIBWEBPG
