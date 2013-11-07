@@ -574,20 +574,21 @@ gpgme_error_t edit_fnc(void *opaque,
   return error;
 }
 
+// TODO: remove this if no longer needed
 // Used to ensure that the EDIT_ACTIONS_MAP is available as a Json::Value
 //  object, even when the webpg object has not been initialized.
 //  NOTE: There is probably a better way of doing this...
-namespace {
-  struct StaticInitHelper {
-    StaticInitHelper() {
-      Json::Reader _action_reader;
-      if (false == (_action_reader.parse (EDIT_VALUES, EDIT_ACTIONS_MAP))) {
-        std::cerr << "\nFailed to parse configuration:" <<
-          _action_reader.getFormatedErrorMessages() << std::endl;
-      }
-    }
-  } config_holder;
-}
+//namespace {
+//  struct StaticInitHelper {
+//    StaticInitHelper() {
+//      Json::Reader _action_reader;
+//      if (false == (_action_reader.parse (EDIT_VALUES, EDIT_ACTIONS_MAP))) {
+//        std::cerr << "\nFailed to parse configuration:" <<
+//          _action_reader.getFormatedErrorMessages() << std::endl;
+//      }
+//    }
+//  } config_holder;
+//}
 
 using namespace boost::archive::iterators;
 
@@ -599,13 +600,11 @@ using namespace boost::archive::iterators;
 webpg::webpg()
 {
   webpg::init();
-//  // TODO: remove this if no longer needed
-//  Json::Reader _action_reader;
-//  if (false == (_action_reader.parse (EDIT_VALUES, EDIT_ACTIONS_MAP))) {
-//    std::cerr << "\nFailed to parse configuration:" <<
-//      _action_reader.getFormatedErrorMessages() << std::endl;
-//  }
-//  std::cout << webpg::webpg_status_map.toStyledString() << std::endl;
+  Json::Reader _action_reader;
+  if (false == (_action_reader.parse (EDIT_VALUES, EDIT_ACTIONS_MAP))) {
+    std::cerr << "\nFailed to parse configuration:" <<
+      _action_reader.getFormatedErrorMessages() << std::endl;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
