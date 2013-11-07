@@ -4498,6 +4498,7 @@ extern "C" const char* gpgGenSubKey_r(const char* keyid,
 }
 // end exported methods
 
+#ifndef H_WEBPGLIB
 int main(int argc, char* argv[]) {
   webpg webpg;
 
@@ -4713,3 +4714,4 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+#endif

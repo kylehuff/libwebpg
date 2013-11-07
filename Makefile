@@ -111,7 +111,7 @@ webpg : webpg.cc
 		mkdir -vp ${LIBDIR}/${DISTDIR}; \
 	fi
 	$(CC) $(CFLAGS) -pthread -o ${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT} webpg.cc $(LDFLAGS)
-	$(CC) $(CFLAGS) -pthread -shared -o ${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT} webpg.cc $(LDFLAGS)
+	$(CC) $(CFLAGS) -DH_WEBPGLIB -pthread -shared -o ${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT} webpg.cc $(LDFLAGS)
 
 clean:
 	@set -e; echo "cleaning build directory...";
