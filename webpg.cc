@@ -4503,131 +4503,199 @@ int main(int argc, char* argv[]) {
 
   if (argv[1] != NULL) {
     std::string argv1 = argv[1];
+    // Check if this is being called as a native messaging host from chrome
     if (argv1.find("chrome-extension://") != std::string::npos) {
       std::string inp;
       unsigned int a, c, i, t;
       t = 0;
+
+      // Sum the first 4 chars from stdin (the length of the message passed).
       for (i = 0; i <= 3; i++) {
         t += getchar();
       }
+
+      // Loop getchar to pull in the message until we reach the length given.
       for (i=0; i < t; i++) {
         c = getchar();
         inp += c;
       }
 
+      // Create our objects to store the message in a usable format.
       Json::Value input_json;
       Json::Reader _action_reader;
 
+      // Parse the message passed on stdin as a Json::Value
       if (false == (_action_reader.parse (inp, input_json)))
         exit(1);
 
+      // Check for the "func" member, which indicates a function is described.
       if (input_json.isMember("func") == true) {
+        // Get the name of the function.
         std::string func = input_json["func"].asString();
+        // Pack the parameters (if any) into the params Json::Value object.
         Json::Value params = input_json["params"];
+        // Define the "res" object which is output on stdout after function
+        //  invocation.
         Json::Value res;
-        if (func == "get_webpg_status") {
+        // Set the default value of "error" to false;
+        res["error"] = false;
+
+        if (func == "get_webpg_status")
           res = webpg.get_webpg_status();
-        } else if (func == "getNamedKey") {
+        else if (func == "getNamedKey")
           res = webpg.getNamedKey(params[0].asString());
-        } else if (func == "getPublicKeyList") {
+        else if (func == "getPublicKeyList")
           res = webpg.getPublicKeyList();
-        } else if (func == "getPrivateKeyList") {
+        else if (func == "getPrivateKeyList")
           res = webpg.getPrivateKeyList();
-        } else if (func == "getExternalKey") {
+        else if (func == "getExternalKey")
           res = webpg.getExternalKey(params[0].asString());
-        } else if (func == "gpgSetPreference") {
-          res = webpg.gpgSetPreference(params[0].asString(), params[1].asString());
-        } else if (func == "gpgGetPreference") {
+        else if (func == "gpgSetPreference")
+          res = webpg.gpgSetPreference(params[0].asString(),
+                                       params[1].asString());
+        else if (func == "gpgGetPreference")
           res = webpg.gpgGetPreference(params[0].asString());
-        } else if (func == "gpgSetGroup") {
+        else if (func == "gpgSetGroup")
           res = webpg.gpgSetGroup(params[0].asString(), params[1].asString());
-        } else if (func == "gpgSetHomeDir") {
+        else if (func == "gpgSetHomeDir")
           res = webpg.gpgSetHomeDir(params[0].asString());
-        } else if (func == "gpgGetHomeDir") {
+        else if (func == "gpgGetHomeDir")
           res = webpg.gpgGetHomeDir();
-        } else if (func == "gpgSetBinary") {
+        else if (func == "gpgSetBinary")
           res = webpg.gpgSetBinary(params[0].asString());
-        } else if (func == "gpgGetBinary") {
+        else if (func == "gpgGetBinary")
           res = webpg.gpgGetBinary();
-        } else if (func == "gpgSetGPGConf") {
+        else if (func == "gpgSetGPGConf")
           res = webpg.gpgSetGPGConf(params[0].asString());
-        } else if (func == "gpgGetGPGConf") {
+        else if (func == "gpgGetGPGConf")
           res = webpg.gpgGetGPGConf();
-        } else if (func == "gpgEncrypt") {
-          res = webpg.gpgEncrypt(params[0].asString(), params[1], params[2].asBool(), params[3]);
-        } else if (func == "gpgSymmetricEncrypt") {
-          res = webpg.gpgSymmetricEncrypt(params[0].asString(), params[1].asBool(), params[2]);
-        } else if (func == "gpgDecrypt") {
+        else if (func == "gpgEncrypt")
+          res = webpg.gpgEncrypt(params[0].asString(),
+                                 params[1],
+                                 params[2].asBool(),
+                                 params[3]);
+        else if (func == "gpgSymmetricEncrypt")
+          res = webpg.gpgSymmetricEncrypt(params[0].asString(),
+                                          params[1].asBool(),
+                                          params[2]);
+        else if (func == "gpgDecrypt")
           res = webpg.gpgDecrypt(params[0].asString());
-        } else if (func == "gpgVerify") {
+        else if (func == "gpgVerify")
           res = webpg.gpgVerify(params[0].asString(), params[1].asString());
-        } else if (func == "gpgSignText") {
-          res = webpg.gpgSignText(params[0].asString(), params[1], params[2].asInt());
-        } else if (func == "gpgSignUID") {
-          res = webpg.gpgSignUID(params[0].asString(), params[1].asInt(), params[2].asString(), params[3].asInt(), params[4].asInt(), params[5].asInt(), params[6].asString(), params[7].asString());
-        } else if (func == "gpgDeleteUIDSign") {
-          res = webpg.gpgDeleteUIDSign(params[0].asString(), params[1].asInt(), params[2].asInt());
-        } else if (func == "gpgEnableKey") {
+        else if (func == "gpgSignText")
+          res = webpg.gpgSignText(params[0].asString(),
+                                  params[1],
+                                  params[2].asInt());
+        else if (func == "gpgSignUID")
+          res = webpg.gpgSignUID(params[0].asString(),
+                                 params[1].asInt(),
+                                 params[2].asString(),
+                                 params[3].asInt(),
+                                 params[4].asInt(),
+                                 params[5].asInt(),
+                                 params[6].asString(),
+                                 params[7].asString());
+        else if (func == "gpgDeleteUIDSign")
+          res = webpg.gpgDeleteUIDSign(params[0].asString(),
+                                       params[1].asInt(),
+                                       params[2].asInt());
+        else if (func == "gpgEnableKey")
           res = webpg.gpgEnableKey(params[0].asString());
-        } else if (func == "gpgDisableKey") {
+        else if (func == "gpgDisableKey")
           res = webpg.gpgDisableKey(params[0].asString());
-        } else if (func == "gpgGenKey") {
-          res = webpg.gpgGenKey(params[0].asString(), params[1].asString(), params[2].asString(), params[3].asString(), params[4].asString(), params[5].asString(), params[6].asString(), params[7].asString(), params[8].asString(), NULL);
-        } else if (func == "gpgGenSubKey") {
-          res = webpg.gpgGenSubKey(params[0].asString(), params[1].asString(), params[2].asString(), params[3].asString(), params[4].asBool(), params[5].asBool(), params[6].asBool(), NULL);
-        } else if (func == "gpgImportKey") {
+        else if (func == "gpgGenKey")
+          res = webpg.gpgGenKey(params[0].asString(),
+                                params[1].asString(),
+                                params[2].asString(),
+                                params[3].asString(),
+                                params[4].asString(),
+                                params[5].asString(),
+                                params[6].asString(),
+                                params[7].asString(),
+                                params[8].asString(),
+                                NULL);
+        else if (func == "gpgGenSubKey")
+          res = webpg.gpgGenSubKey(params[0].asString(),
+                                   params[1].asString(),
+                                   params[2].asString(),
+                                   params[3].asString(),
+                                   params[4].asBool(),
+                                   params[5].asBool(),
+                                   params[6].asBool(),
+                                   NULL);
+        else if (func == "gpgImportKey")
           res = webpg.gpgImportKey(params[0].asString());
-        } else if (func == "gpgImportExternalKey") {
+        else if (func == "gpgImportExternalKey")
           res = webpg.gpgImportExternalKey(params[0].asString());
-        } else if (func == "gpgDeletePublicKey") {
+        else if (func == "gpgDeletePublicKey")
           res = webpg.gpgDeletePublicKey(params[0].asString());
-        } else if (func == "gpgDeletePrivateKey") {
+        else if (func == "gpgDeletePrivateKey")
           res = webpg.gpgDeletePrivateKey(params[0].asString());
-        } else if (func == "gpgDeletePrivateSubKey") {
-          res = webpg.gpgDeletePrivateSubKey(params[0].asString(), params[1].asInt());
-        } else if (func == "gpgSetKeyTrust") {
-          res = webpg.gpgSetKeyTrust(params[0].asString(), params[1].asInt());
-        } else if (func == "gpgAddUID") {
-          res = webpg.gpgAddUID(params[0].asString(), params[1].asString(), params[2].asString(), params[3].asString());
-        } else if (func == "gpgDeleteUID") {
+        else if (func == "gpgDeletePrivateSubKey")
+          res = webpg.gpgDeletePrivateSubKey(params[0].asString(),
+                                             params[1].asInt());
+        else if (func == "gpgSetKeyTrust")
+          res = webpg.gpgSetKeyTrust(params[0].asString(),
+                                     params[1].asInt());
+        else if (func == "gpgAddUID")
+          res = webpg.gpgAddUID(params[0].asString(),
+                                params[1].asString(),
+                                params[2].asString(),
+                                params[3].asString());
+        else if (func == "gpgDeleteUID")
           res = webpg.gpgDeleteUID(params[0].asString(), params[0].asInt());
-        } else if (func == "gpgSetPrimaryUID") {
-          res = webpg.gpgSetPrimaryUID(params[0].asString(), params[1].asInt());
-        } else if (func == "gpgSetSubkeyExpire") {
-          res = webpg.gpgSetSubkeyExpire(params[0].asString(), params[1].asInt(), params.asInt());
-        } else if (func == "gpgSetPubkeyExpire") {
-          res = webpg.gpgSetPubkeyExpire(params[0].asString(), params[1].asInt());
-        } else if (func == "gpgExportPublicKey") {
+        else if (func == "gpgSetPrimaryUID")
+          res = webpg.gpgSetPrimaryUID(params[0].asString(),
+                                       params[1].asInt());
+        else if (func == "gpgSetSubkeyExpire")
+          res = webpg.gpgSetSubkeyExpire(params[0].asString(),
+                                         params[1].asInt(),
+                                         params.asInt());
+        else if (func == "gpgSetPubkeyExpire")
+          res = webpg.gpgSetPubkeyExpire(params[0].asString(),
+                                         params[1].asInt());
+        else if (func == "gpgExportPublicKey")
           res = webpg.gpgExportPublicKey(params[0].asString());
-        } else if (func == "gpgPublishPublicKey") {
+        else if (func == "gpgPublishPublicKey")
           res = webpg.gpgPublishPublicKey(params[0].asString());
-        } else if (func == "gpgRevokeKey") {
-          res = webpg.gpgRevokeKey(params[0].asString(), params[1].asInt(), params[2].asInt(), params[3].asString());
-        } else if (func == "gpgRevokeUID") {
-          res = webpg.gpgRevokeUID(params[0].asString(), params[1].asInt(), params[2].asInt(), params[3].asString());
-        } else if (func == "gpgRevokeSignature") {
-          res = webpg.gpgRevokeSignature(params[0].asString(), params[1].asInt(), params[2].asInt(), params[3].asInt(), params[4].asString());
-        } else if (func == "gpgChangePassphrase") {
+        else if (func == "gpgRevokeKey")
+          res = webpg.gpgRevokeKey(params[0].asString(),
+                                   params[1].asInt(),
+                                   params[2].asInt(),
+                                   params[3].asString());
+        else if (func == "gpgRevokeUID")
+          res = webpg.gpgRevokeUID(params[0].asString(),
+                                   params[1].asInt(),
+                                   params[2].asInt(),
+                                   params[3].asString());
+        else if (func == "gpgRevokeSignature")
+          res = webpg.gpgRevokeSignature(params[0].asString(),
+                                         params[1].asInt(),
+                                         params[2].asInt(),
+                                         params[3].asInt(),
+                                         params[4].asString());
+        else if (func == "gpgChangePassphrase")
           res = webpg.gpgChangePassphrase(params[0].asString());
-        } else if (func == "gpgShowPhoto") {
+        else if (func == "gpgShowPhoto")
           webpg.gpgShowPhoto(params[0].asString());
-          res["error"] = false;
-        } else if (func == "gpgAddPhoto") {
-          res = webpg.gpgAddPhoto(params[0].asString(), params[1].asString(), params[2].asString());
-        } else if (func == "gpgGetPhotoInfo") {
+        else if (func == "gpgAddPhoto")
+          res = webpg.gpgAddPhoto(params[0].asString(),
+                                  params[1].asString(),
+                                  params[2].asString());
+        else if (func == "gpgGetPhotoInfo")
           res = webpg.gpgGetPhotoInfo(params[0].asString());
-        } else if (func == "setTempGPGOption") {
-          res = webpg.setTempGPGOption(params[0].asString(), params[1].asString());
-        } else if (func == "restoreGPGConfig") {
+        else if (func == "setTempGPGOption")
+          res = webpg.setTempGPGOption(params[0].asString(),
+                                       params[1].asString());
+        else if (func == "restoreGPGConfig")
           res = webpg.restoreGPGConfig();
-        } else if (func == "getTemporaryPath") {
+        else if (func == "getTemporaryPath")
           res = webpg.getTemporaryPath();
-        } else {
+        else
           res = get_error_map(__func__,
                               GPG_ERR_UNKNOWN_COMMAND,
                               __LINE__,
                               __FILE__);
-        }
 
         Json::FastWriter writer;
         std::string ret = writer.write(res);
