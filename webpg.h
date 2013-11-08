@@ -25,6 +25,7 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #include "libs/jsoncpp/include/json/json.h"
 
 #ifdef HAVE_W32_SYSTEM
+#include <windows.h>
 #ifdef _WIN64
 typedef __int64 ssize_t;
 #else
