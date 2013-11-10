@@ -4540,7 +4540,7 @@ int main(int argc, char* argv[]) {
     // Parse the message passed on stdin as a Json::Value
     bool parseResult = _action_reader.parse(inp, input_json);
     if (parseResult == false)
-      ret = _action_reader.getFormattedErrorMessages();
+      ret = _action_reader.getFormatedErrorMessages();
 
     // Check for the "func" member, which indicates a function is described.
     if (input_json.isMember("func") == true) {
