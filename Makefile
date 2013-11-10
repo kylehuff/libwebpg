@@ -48,6 +48,7 @@ ifndef PLATFORM
     PLATFORM=mingw
     BINEXT=.exe
     SOEXT=.dll
+    CFLAGS += -DHAVE_W32_SYSTEM
 	  ifeq ($(TARGET_CPU),x86_64)
 		  DISTDIR=WINNT_x86_64-msvc
 	  else
@@ -57,6 +58,7 @@ ifndef PLATFORM
     PLATFORM=cygwin
     BINEXT=.exe
     SOEXT=.dll
+    CFLAGS += -DHAVE_W32_SYSTEM
 	  ifeq ($(TARGET_CPU),x86_64)
 		  DISTDIR=WINNT_x86_64-msvc
 	  else
@@ -83,20 +85,24 @@ endif
 BINDIR=$(CURDIR)/build/bin
 LIBDIR=$(CURDIR)/build/lib
 
-LDFLAGS:=$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a \
-  $(PROJECT_ROOT)/libs/libgpg-error/$(DISTDIR)/libgpg-error.a \
-  $(PROJECT_ROOT)/libs/libassuan/$(DISTDIR)/libassuan.a \
-  $(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a
+LDFLAGS:="$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a" \
+  "$(PROJECT_ROOT)/libs/libgpg-error/$(DISTDIR)/libgpg-error.a" \
+  "$(PROJECT_ROOT)/libs/libassuan/$(DISTDIR)/libassuan.a" \
+  "$(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a"
 
-CFLAGS += -I $(PROJECT_ROOT)/libs/boost/include \
-  -I $(PROJECT_ROOT)/libs/libgpgme/${DISTDIR}/include \
-  -I $(PROJECT_ROOT)/libs/libgpg-error/${DISTDIR}/include \
-  -D_FILE_OFFSET_BITS=64 -g -Wall
+CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
+  -I "$(PROJECT_ROOT)/libs/libgpgme/${DISTDIR}/include" \
+  -I "$(PROJECT_ROOT)/libs/libgpg-error/${DISTDIR}/include" \
+  -D "_FILE_OFFSET_BITS=64" -g -Wall
 
 ifeq ($(CC),gcc)
 	LDFLAGS += -DDEBUG -lstdc++
 else
-	LDFLAGS += -DDEBUG -lgdi32 -lstdc++ -ljsoncpp
+	LDFLAGS += -DDEBUG -lgdi32 -lstdc++
+endif
+
+ifeq ($(PLATFORM),mingw)
+    LDFLAGS += -lwsock32
 endif
 
 ifeq ($(LBITS),64)
@@ -105,13 +111,13 @@ endif
 
 webpg : webpg.cc
 	@set -e; echo ${PLATFORM}; if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
-		mkdir -vp ${BINDIR}/${DISTDIR}; \
+		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
-		mkdir -vp ${LIBDIR}/${DISTDIR}; \
+		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(CC) $(CFLAGS) -pthread -o ${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT} webpg.cc $(LDFLAGS)
-	$(CC) $(CFLAGS) -DH_WEBPGLIB -pthread -shared -o ${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT} webpg.cc $(LDFLAGS)
+	$(CC) $(CFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
+	$(CC) $(CFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
 
 clean:
 	@set -e; echo "cleaning build directory...";
