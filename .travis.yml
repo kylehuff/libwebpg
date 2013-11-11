@@ -1,0 +1,6 @@
+install: make
+test: make
+script: make
+language: cpp
+compiler:
+  - gcc
