@@ -290,29 +290,12 @@ gpgme_error_t passphrase_cb (void *opaque,
                              int last_was_bad,
                              int fd)
 {
-#ifdef HAVE_W32_SYSTEM
-    DWORD written;
-    WriteFile ((HANDLE) fd, "\n", 1, &written, 0);
-#else
-    std::string pass = "\n";
-    int passlen = pass.length();
-    int off = 0;
-
-    do {
-        write_res = write (fd, &pass[off], passlen - off);
-        if (write_res > 0)
-        off += write_res;
-    }
-    while (write_res > 0 && off != passlen);
-
-    return off == passlen ? 0 : gpgme_error_from_errno (errno);
-#endif
-
+  gpgme_io_write (fd, "\n", 1);
   return 0;
 }
 
 // Converts a "_param" to an actual value
-const char* get_value_for(const char* var)
+std::string get_value_for(const char* var)
 {
   std::string cmd;
   if (!strcmp(var, "_current_uid"))
@@ -320,7 +303,7 @@ const char* get_value_for(const char* var)
   else if (!strcmp(var, "_key")) {
     cmd = "key ";
     cmd += akey_index;
-    return (const char *) cmd.c_str();
+    return cmd.c_str();
   } else if (!strcmp(var, "_item")) {
     if (!strcmp (revitem.c_str(), "revkey")) {
       cmd = "key ";
@@ -336,7 +319,7 @@ const char* get_value_for(const char* var)
   } else if (!strcmp(var, "_revitem"))
     return revitem.c_str();
   else
-    return (const char *) "ERROR";
+    return "ERROR";
 }
 
 gpgme_error_t edit_fnc(void *opaque,
@@ -357,7 +340,7 @@ gpgme_error_t edit_fnc(void *opaque,
       _action_reader.getFormatedErrorMessages() << std::endl;
   }
 
-  char *response = NULL;
+  std::string response;
   int error = GPG_ERR_NO_ERROR;
   static std::string prior_response = "";
   static gpgme_status_code_t status_result;
@@ -385,19 +368,18 @@ gpgme_error_t edit_fnc(void *opaque,
         case 2:
         case 3:
         case 4:
-          std::cout << "Line: " << __LINE__ << "; case " << step << std::endl;
           if (EDIT_ACTIONS_MAP[edit_type]["keyedit.prompt"]
            .isValidIndex(step)) {
             v_iter = step;
             if (EDIT_ACTIONS_MAP[edit_type]["keyedit.prompt"]
              .get(v_iter, default_value).asString().substr(0, 1) == "_") {
-              response = (char *) get_value_for(
+              response = get_value_for(
                 EDIT_ACTIONS_MAP[edit_type]["keyedit.prompt"]
                   .get(v_iter, default_value).asString().c_str()
               );
             } else {
-              response = (char *) EDIT_ACTIONS_MAP[edit_type]["keyedit.prompt"]
-               .get(v_iter, default_value).asString().c_str();
+              response = EDIT_ACTIONS_MAP[edit_type]["keyedit.prompt"]
+               .get(v_iter, default_value).asString();
             }
             if (step == 1) {
               if (current_edit == WEBPG_EDIT_DELSIGN)
@@ -407,8 +389,10 @@ gpgme_error_t edit_fnc(void *opaque,
                 text_line = 1;
               }
             }
-            std::cout << "Line: " << __LINE__ << "; response: " <<
-              response << std::endl;
+            break;
+          } else {
+            step = -1;
+            response = "quit";
             break;
           }
 
@@ -417,68 +401,68 @@ gpgme_error_t edit_fnc(void *opaque,
             error = status_result; // there is a problem...
           prior_response = "";
           step = -1;
-          response = (char *) "quit";
+          response = "quit";
           break;
       }
       step++;
     }
     else if (!strcmp (args, "keyedit.save.okay"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "trustsig_prompt.trust_value"))
-      response = (char *) "1";
+      response = "1";
     else if (!strcmp (args, "trustsig_prompt.trust_depth"))
-      response = (char *) "1";
+      response = "1";
     else if (!strcmp (args, "trustsig_prompt.trust_regexp"))
-      response = (char *) "";
+      response = "";
     else if (!strcmp (args, "sign_uid.okay"))
-      response = (char *) "y";
+      response = "y";
     else if (!strcmp (args, "keyedit.delsig.valid") || 
              !strcmp (args, "keyedit.delsig.invalid") ||
              !strcmp (args, "keyedit.delsig.unknown") ||
              !strcmp (args, "ask_revoke_sig.one")) {
       if (signature_iter == atoi(current_sig.c_str())) {
-        response = (char *) "y";
+        response = "y";
         current_sig = "0";
         current_uid = "0";
         signature_iter = 0;
       } else {
-        response = (char *) "N";
+        response = "N";
       }
       signature_iter++;
     } else if (!strcmp (args, "edit_ownertrust.value")) {
       if (step < 15) {
-        response = (char *) trust_assignment.c_str();
+        response = trust_assignment;
         step++;
       } else {
-        response = (char *) "m";
+        response = "m";
       }
     } else if (!strcmp (args, "edit_ownertrust.set_ultimate.okay"))
-            response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "keyedit.delsig.selfsig"))
-      response = (char *) "y";
+      response = "y";
     else if (!strcmp (args, "keygen.name"))
-      response = (char *) genuid_name.c_str();
+      response = genuid_name.c_str();
     else if (!strcmp (args, "keygen.email")) {
       if (strlen (genuid_email.c_str()) > 1)
-        response = (char *) genuid_email.c_str();
+        response = genuid_email.c_str();
       else
-        response = (char *) "";
+        response = "";
     } else if (!strcmp (args, "keygen.comment")) {
       if (strlen (genuid_comment.c_str()) > 1)
-        response = (char *) genuid_comment.c_str();
+        response = genuid_comment.c_str();
       else
-        response = (char *) "";
+        response = "";
     } else if (!strcmp (args, "keygen.algo"))
-      response = (char *) gen_subkey_type.c_str();
+      response = gen_subkey_type.c_str();
     else if (!strcmp (args, "keygen.flags")) {
       switch (flag_step) {
         case 0:
           // If the gen_sign_flag is set, we don't need to change
           //  anything, as the sign_flag is set by default
           if (gen_sign_flag) {
-            response = (char *) "nochange";
+            response = "nochange";
           } else {
-            response = (char *) "S";
+            response = "S";
           }
           break;
 
@@ -487,9 +471,9 @@ gpgme_error_t edit_fnc(void *opaque,
           //  anything, as the enc_flag is set by default on keys
           //  that support the enc flag (RSA)
           if (gen_enc_flag) {
-            response = (char *) "nochange";
+            response = "nochange";
           } else {
-            response = (char *) "E";
+            response = "E";
           }
           break;
 
@@ -497,79 +481,82 @@ gpgme_error_t edit_fnc(void *opaque,
           if (gen_auth_flag) {
             response = (char *) "A";
           } else {
-            response = (char *) "nochange";
+            response = "nochange";
           }
           break;
 
         default:
-          response = (char *) "Q";
+          response = "Q";
           flag_step = -1;
           break;
       }
       flag_step++;
     } else if (!strcmp (args, "keygen.size"))
-      response = (char *) gen_subkey_length.c_str();
+      response = gen_subkey_length.c_str();
     else if (!strcmp (args, "keygen.valid"))
-      response = (char *) expiration.c_str();
+      response = expiration.c_str();
     else if (!strcmp (args, "keyedit.remove.uid.okay"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "keyedit.revoke.subkey.okay"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "keyedit.revoke.uid.okay"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "ask_revoke_sig.okay"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "ask_revocation_reason.code"))
-      response = (char *) reason_index.c_str();
+      response = reason_index.c_str();
     else if (!strcmp (args, "ask_revocation_reason.text")) {
       if (text_line > 1) {
         text_line = 1;
-        response = (char *) "";
+        response = "";
       } else {
         text_line++;
-        response = (char *) description.c_str();
+        response = description.c_str();
       }
     } else if (!strcmp (args, "ask_revocation_reason.okay"))
-        response = (char *) "Y";
+        response = "Y";
     else if (!strcmp (args, "keyedit.remove.subkey.okay"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "photoid.jpeg.add")) {
       switch (jstep) {
         case 0:
-          response = (char *) photo_path.c_str();
+          response = photo_path;
           break;
 
         default:
           jstep = -1;
+          break;
       }
       jstep++;
     } else if (!strcmp (args, "photoid.jpeg.size"))
-      response = (char *) "Y";
+      response = "Y";
     else if (!strcmp (args, "keyedit.save.okay")) {
-      response = (char *) "Y";
+      response = "Y";
       step = 0;
     } else if (!strcmp (args, "passphrase.enter")) {
-      response = (char *) "";
+      response = "";
     } else {
       fprintf(stdout, "We should never reach this line; Line: %i\n", __LINE__);
       std::cout << "Line: " << __LINE__ << "; " << edit_status << std::endl;
-      return 1;
+      response = "quit";
     }
+  } else {
+    return 0;
   }
 
-  if (response) {
-    prior_response = response;
-    if (!strcmp(response, "quit")) {
-      step = 0;
-      jstep = 0;
-      flag_step = 0;
-    }
-    gpgme_io_write (fd, response, strlen (response));
-    gpgme_io_write (fd, "\n", 1);
-
-    if (error != GPG_ERR_NO_ERROR)
-      std::cout << error << std::endl;
+  prior_response = response;
+  if (!strcmp(response.c_str(), "quit")) {
+    step = 0;
+    jstep = 0;
+    flag_step = 0;
   }
+
+  gpgme_io_write (fd, response.c_str(), response.length());
+  gpgme_io_write (fd, "\n", 1);
+
+  if (error != GPG_ERR_NO_ERROR)
+    std::cout << error << std::endl;
+
   return error;
 }
 
@@ -1783,17 +1770,8 @@ Json::Value webpg::gpgEncrypt(const std::string& data,
     gpgme_key_t signing_key;
     for (nsigners=0; nsigners < signers.size(); nsigners++) {
       signer = signers[nsigners];
-      // FIXME: this probably should use gpgme_get_key; why iterate via
-      //        keylist_next when we are only retrieving a single key?
-      err = gpgme_op_keylist_start (ctx, signer.asString().c_str(), 0);
-      if (err != GPG_ERR_NO_ERROR)
-        return get_error_map(__func__, err, __LINE__, __FILE__);
 
-      err = gpgme_op_keylist_next (ctx, &signing_key);
-      if (err != GPG_ERR_NO_ERROR)
-        return get_error_map(__func__, err, __LINE__, __FILE__);
-
-      err = gpgme_op_keylist_end (ctx);
+      err = gpgme_get_key(ctx, signer.asString().c_str(), &signing_key, 0);
       if (err != GPG_ERR_NO_ERROR)
         return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -1804,7 +1782,7 @@ Json::Value webpg::gpgEncrypt(const std::string& data,
       gpgme_key_unref (signing_key);
     }
 
-    if (!nsigners > 0)
+    if (nsigners < 1)
       return get_error_map(__func__, GPG_ERR_MISSING_KEY, __LINE__, __FILE__);
   }
 
@@ -2308,20 +2286,8 @@ Json::Value webpg::gpgSignText(const std::string& plain_text,
 
   for (nsigners=0; nsigners < signers.size(); nsigners++) {
     signer = signers[nsigners];
-    err = gpgme_op_keylist_start (ctx, signer.asString().c_str(), 0);
-    if (err != GPG_ERR_NO_ERROR)
-      return get_error_map(__func__, err, __LINE__, __FILE__);
 
-    // FIXME: this probably should use gpgme_get_key; why iterate via
-    //        keylist_next when we are only retrieving a single key?
-    //        alternately, change the "for (nsigners" logic to iterate
-    //        on this method, and collect all the keys with a single
-    //        gpgme_op_keylist_start invocation. ??
-    err = gpgme_op_keylist_next (ctx, &key);
-    if (err != GPG_ERR_NO_ERROR)
-      return get_error_map(__func__, err, __LINE__, __FILE__);
-
-    err = gpgme_op_keylist_end (ctx);
+    err = gpgme_get_key(ctx, signer.asString().c_str(), &key, 0);
     if (err != GPG_ERR_NO_ERROR)
       return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -2332,7 +2298,7 @@ Json::Value webpg::gpgSignText(const std::string& plain_text,
     gpgme_key_unref (key);
   }
 
-  if (!nsigners > 0)
+  if (nsigners < 1)
     return get_error_map(__func__, GPG_ERR_MISSING_KEY, __LINE__, __FILE__);
 
   err = gpgme_data_new_from_mem (&in, plain_text.c_str(),
@@ -2449,17 +2415,7 @@ Json::Value webpg::gpgSignUID(
       result = get_error_map(__func__, err, __LINE__, __FILE__);
   }
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    result = get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    result = get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     result = get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -2514,17 +2470,7 @@ Json::Value webpg::gpgEnableKey(const std::string& keyid)
   gpgme_key_t key = NULL;
   Json::Value response;
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -2563,17 +2509,7 @@ Json::Value webpg::gpgDisableKey(const std::string& keyid)
   gpgme_key_t key = NULL;
   Json::Value response;
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -2621,17 +2557,7 @@ Json::Value webpg::gpgDeleteUIDSign(const std::string& keyid,
   current_uid = i_to_str(uid);
   current_sig = i_to_str(signature);
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -2834,17 +2760,7 @@ Json::Value webpg::gpgGenSubKeyWorker(genSubKeyParams params,
   gen_enc_flag = params.enc_flag;
   gen_auth_flag = params.auth_flag;
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, params.keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, params.keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3150,17 +3066,7 @@ Json::Value webpg::gpgDeleteKey(const std::string& keyid, int allow_secret)
   gpgme_key_t key = NULL;
   Json::Value response;
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3225,17 +3131,7 @@ Json::Value webpg::gpgDeletePrivateSubKey(const std::string& keyid,
 
   akey_index = i_to_str(key_idx);
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3286,17 +3182,7 @@ Json::Value webpg::gpgSetKeyTrust(const std::string& keyid, long trust_level)
     return response;
   }
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3356,17 +3242,7 @@ Json::Value webpg::gpgAddUID(const std::string& keyid,
   if (strlen (name.c_str()) < 5)
     return get_error_map(__func__, GPG_ERR_TOO_SHORT, __LINE__, __FILE__);
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3422,17 +3298,7 @@ Json::Value webpg::gpgDeleteUID(const std::string& keyid, long uid_idx)
 
   current_uid = i_to_str(uid_idx);
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3482,17 +3348,7 @@ Json::Value webpg::gpgSetPrimaryUID(const std::string& keyid, long uid_idx)
 
   current_uid = i_to_str(uid_idx);
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3546,17 +3402,7 @@ Json::Value webpg::gpgSetKeyExpire(const std::string& keyid,
   akey_index = i_to_str(key_idx);
   expiration = i_to_str(expire);
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3771,17 +3617,7 @@ Json::Value webpg::gpgRevokeItem(const std::string& keyid,
   reason_index = i_to_str(reason);
   description = desc.c_str();
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -4142,20 +3978,23 @@ int webpg::verifyDomainKey(const std::string& domain,
 }
 
 void webpg::gpgShowPhoto(const std::string& keyid) {
+  gpgme_error_t err;
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_ctx_t edit_ctx = get_gpgme_ctx();
   gpgme_key_t key;
   size_t out_size;
   gpgme_set_keylist_mode (ctx, (GPGME_KEYLIST_MODE_LOCAL));
-  gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  while (!(gpgme_op_keylist_next (ctx, &key))) {
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
+  if (err ==  GPG_ERR_NO_ERROR) {
     gpgme_data_t out;
     gpgme_data_new (&out);
     current_edit = WEBPG_EDIT_SHOW_PHOTO;
     gpgme_op_edit (edit_ctx, key, edit_fnc, out, out);
-    edit_status = gpgme_data_release_and_get_mem (out, &out_size);
+    //edit_status = gpgme_data_release_and_get_mem (out, &out_size);
+    gpgme_data_release (out);
   }
-  gpgme_op_keylist_end (ctx);
+  if (key)
+    gpgme_key_unref (key);
   gpgme_release (ctx);
 };
 
@@ -4171,12 +4010,13 @@ Json::Value webpg::gpgAddPhoto(const std::string& keyid,
   std::string temp_path;
 
   char *temp_envvar = getenv("TEMP");
-  if (temp_envvar != NULL)
+  if (temp_envvar != NULL) {
     temp_path = temp_envvar;
-  else
+    temp_path += "/";
+  } else
     temp_path = "/tmp/";
 
-  temp_path = temp_path + photo_name;
+  temp_path = temp_path +  photo_name;
 
   std::ofstream tmp_photo(temp_path.c_str(),
     std::ios::out | std::ios::trunc | std::ios::binary);
@@ -4201,17 +4041,7 @@ Json::Value webpg::gpgAddPhoto(const std::string& keyid,
 
   photo_path = temp_path;
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -4253,17 +4083,7 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   size_t out_size = 0;
   int nuids = 0;
 
-  // FIXME: this probably should use gpgme_get_key; why iterate via
-  //        keylist_next when we are only retrieving a single key?
-  err = gpgme_op_keylist_start (ctx, keyid.c_str(), 0);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_next (ctx, &key);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
-  err = gpgme_op_keylist_end (ctx);
+  err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
