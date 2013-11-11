@@ -99,8 +99,6 @@ static int flag_step = 0;
 
 ssize_t write_res;
 
-Json::Value EDIT_ACTIONS_MAP;
-
 // Used to indicate the current edit action before calling edit_fnc
 static int current_edit = WEBPG_EDIT_NONE;
 
@@ -346,12 +344,18 @@ gpgme_error_t edit_fnc(void *opaque,
                        const char *args,
                        int fd)
 {
-  /* this is stores the response to a questions that arise during
-      the edit loop - it is what the user would normally type while
-      using `gpg --edit-key`. To test the prompts and their output,
-      you can execute GnuPG this way:
-          gpg --command-fd 0 --status-fd 2 --edit-key <KEY ID>
-   */
+  /* this stores the response to a questions that arise during
+     the edit loop - it is what the user would normally type while
+     using `gpg --edit-key`. To test the prompts and their output,
+     you can execute GnuPG this way:
+         gpg --command-fd 0 --status-fd 2 --edit-key <KEY ID>
+  */
+  Json::Value EDIT_ACTIONS_MAP;
+  Json::Reader _action_reader;
+  if (false == (_action_reader.parse (EDIT_VALUES, EDIT_ACTIONS_MAP))) {
+    std::cerr << "\nFailed to parse configuration:" <<
+      _action_reader.getFormatedErrorMessages() << std::endl;
+  }
 
   char *response = NULL;
   int error = GPG_ERR_NO_ERROR;
@@ -560,14 +564,9 @@ gpgme_error_t edit_fnc(void *opaque,
       jstep = 0;
       flag_step = 0;
     }
-#ifdef HAVE_W32_SYSTEM
-    DWORD written;
-    WriteFile ((HANDLE) fd, response, strlen (response), &written, 0);
-    WriteFile ((HANDLE) fd, "\n", 1, &written, 0);
-#else
-    write_res = write (fd, response, strlen (response));
-    write_res = write (fd, "\n", 1);
-#endif
+    gpgme_io_write (fd, response, strlen (response));
+    gpgme_io_write (fd, "\n", 1);
+
     if (error != GPG_ERR_NO_ERROR)
       std::cout << error << std::endl;
   }
@@ -600,11 +599,6 @@ using namespace boost::archive::iterators;
 webpg::webpg()
 {
   webpg::init();
-  Json::Reader _action_reader;
-  if (false == (_action_reader.parse (EDIT_VALUES, EDIT_ACTIONS_MAP))) {
-    std::cerr << "\nFailed to parse configuration:" <<
-      _action_reader.getFormatedErrorMessages() << std::endl;
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
