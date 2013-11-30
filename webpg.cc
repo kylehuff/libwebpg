@@ -3982,7 +3982,6 @@ void webpg::gpgShowPhoto(const std::string& keyid) {
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_ctx_t edit_ctx = get_gpgme_ctx();
   gpgme_key_t key;
-  size_t out_size;
   gpgme_set_keylist_mode (ctx, (GPGME_KEYLIST_MODE_LOCAL));
   err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err ==  GPG_ERR_NO_ERROR) {
@@ -3990,7 +3989,6 @@ void webpg::gpgShowPhoto(const std::string& keyid) {
     gpgme_data_new (&out);
     current_edit = WEBPG_EDIT_SHOW_PHOTO;
     gpgme_op_edit (edit_ctx, key, edit_fnc, out, out);
-    //edit_status = gpgme_data_release_and_get_mem (out, &out_size);
     gpgme_data_release (out);
   }
   if (key)
