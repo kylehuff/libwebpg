@@ -1,11 +1,9 @@
 PROJECT:=webpg
 PROJECT_ROOT:=$(CURDIR)
 
-CC = gcc
+CC = clang
 
-ifeq ($(CC),gcc)
-	LBITS := $(shell getconf LONG_BIT)
-endif
+LBITS := $(shell getconf LONG_BIT)
 
 BINEXT=
 SOEXT=.so
@@ -88,21 +86,16 @@ LIBDIR=$(CURDIR)/build/lib
 LDFLAGS:="$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a" \
   "$(PROJECT_ROOT)/libs/libgpg-error/$(DISTDIR)/libgpg-error.a" \
   "$(PROJECT_ROOT)/libs/libassuan/$(DISTDIR)/libassuan.a" \
-  "$(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a"
+  "$(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a" \
+  -DDEBUG -lstdc++
 
 CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
   -I "$(PROJECT_ROOT)/libs/libgpgme/${DISTDIR}/include" \
   -I "$(PROJECT_ROOT)/libs/libgpg-error/${DISTDIR}/include" \
-  -D "_FILE_OFFSET_BITS=64" -g -Wall
-
-ifeq ($(CC),gcc)
-	LDFLAGS += -DDEBUG -lstdc++
-else
-	LDFLAGS += -DDEBUG -lgdi32 -lstdc++
-endif
+  -D "_FILE_OFFSET_BITS=64" -g -Wall -O2
 
 ifeq ($(PLATFORM),mingw)
-    LDFLAGS += -lwsock32
+    LDFLAGS += -lwsock32 -lgdi32
 endif
 
 ifeq ($(LBITS),64)
