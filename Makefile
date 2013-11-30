@@ -1,8 +1,6 @@
 PROJECT:=webpg
 PROJECT_ROOT:=$(CURDIR)
 
-CC = clang
-
 LBITS := $(shell getconf LONG_BIT)
 
 BINEXT=
