@@ -237,7 +237,7 @@ const std::string EDIT_VALUES = "{\
 
 /* An inline method to convert an integer to a string */
 inline
-std::string i_to_str(const int &number)
+std::string i_to_str(const unsigned int &number)
 {
    std::ostringstream oss;
    oss << number;
