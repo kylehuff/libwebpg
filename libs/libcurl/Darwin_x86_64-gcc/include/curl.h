@@ -29,13 +29,8 @@
  * curl-library mailing list subscription and unsubscription web interface:
  *   http://cool.haxx.se/mailman/listinfo/curl-library/
  */
-
 #include "curlver.h"         /* libcurl version defines   */
-#ifdef LP64
-#include "curlbuld64.h"
-#else
-#include "curlbuild32.h"       /* libcurl build definitions */
-#endif
+#include "curlbuild.h"
 #include "curlrules.h"       /* libcurl rules enforcement */
 
 /*
