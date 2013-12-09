@@ -89,7 +89,7 @@ typedef enum {
 ///////////////////////////////////////////////////////////////////////////////
 class webpg {
   public:
-    webpg();
+    //webpg();
     virtual ~webpg();
 
     std::string GNUPGHOME;

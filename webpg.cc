@@ -583,10 +583,10 @@ using namespace boost::archive::iterators;
 ///
 /// @brief  Constructor for the webpg object. Performs object initialization.
 ///////////////////////////////////////////////////////////////////////////////
-webpg::webpg()
-{
-  webpg::init();
-}
+//webpg::webpg()
+//{
+//  webpg::init();
+//}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn webpg::~webpg()
@@ -626,17 +626,17 @@ void webpg::init()
 
   ctx = get_gpgme_ctx();
 
+  response["error"] = false;
+
   err = gpgme_engine_check_version (GPGME_PROTOCOL_OpenPGP);
   if (err != GPG_ERR_NO_ERROR)
       error_map = get_error_map(__func__, err, __LINE__, __FILE__);
 
-  if (error_map.size()) {
+  if (error_map.size() > 0) {
       response["error"] = true;
       response["error_map"] = error_map;
       webpg_status_map = error_map;
   }
-
-  response["error"] = false;
 
   response["gpgconf_detected"] = gpgconf_detected();
   response["openpgp_detected"] = openpgp_detected();
@@ -795,7 +795,6 @@ bool webpg::openpgp_detected()
 bool webpg::gpgconf_detected()
 {
   gpgme_error_t err;
-  std::string cfg_present;
   err = gpgme_engine_check_version (GPGME_PROTOCOL_GPGCONF);
   if (err && err != GPG_ERR_NO_ERROR) {
     return false;
@@ -1231,7 +1230,7 @@ Json::Value webpg::gpgSetPreference(const std::string& preference,
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
-  gpgme_conf_arg_t original_arg, arg = NULL;
+  gpgme_conf_arg_t original_arg = NULL, arg = NULL;
   gpgme_conf_opt_t opt;
 
   if (pref_value.length())
@@ -1993,7 +1992,7 @@ Json::Value webpg::gpgDecryptVerify(const std::string& data,
   std::string out_buf;
   std::string envvar;
   Json::Value response;
-  int nsig, nnotations, ret;
+  int nsig = 0, nnotations, ret;
   int tnsig = 0;
   char buf[513];
   char *agent_info = getenv("GPG_AGENT_INFO");
@@ -2268,7 +2267,7 @@ Json::Value webpg::gpgSignText(const std::string& plain_text,
   gpgme_sig_mode_t sig_mode;
   gpgme_sign_result_t sign_result;
   unsigned int nsigners;
-  int sign_mode, nsig;
+  int sign_mode = 2, nsig;
   Json::Value signer;
   Json::Value result;
 
@@ -2644,6 +2643,7 @@ void webpg::progress_cb(void *self,
 /// @param  APIObj  A reference to webpg.
 /// @param  cb_status   The progress callback for the operation.
 ///////////////////////////////////////////////////////////////////////////////
+// FIXME: This method should return Json::Value object value, not a string
 std::string webpg::gpgGenKeyWorker(genKeyParams& params, void* APIObj,
                                    void(*cb_status)(
                                     void *self,
@@ -2690,7 +2690,7 @@ std::string webpg::gpgGenKeyWorker(genKeyParams& params, void* APIObj,
 
   err = gpgme_op_genkey (ctx, (char *) params_str.c_str(), NULL, NULL);
   if (err)
-    return "Error with genkey start" + err;
+    return get_error_map(__func__, err, __LINE__, __FILE__).toStyledString();
 
   result = gpgme_op_genkey_result (ctx);
 
@@ -3831,7 +3831,7 @@ int webpg::verifyDomainKey(const std::string& domain,
   int nsig;
   int domain_key_valid = -1;
   gpgme_ctx_t ctx = get_gpgme_ctx();
-  gpgme_key_t domain_key, user_key, secret_key, key;
+  gpgme_key_t domain_key = NULL, user_key, secret_key, key;
   gpgme_user_id_t uid;
   gpgme_key_sig_t sig;
   gpgme_error_t err;
@@ -4127,7 +4127,7 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
 // exported methods
 extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
   webpg webpg;
-  fnOutputString = webpg.webpg_status_map.toStyledString();
+  fnOutputString = webpg.get_webpg_status().toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
