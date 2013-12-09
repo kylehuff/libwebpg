@@ -11,7 +11,7 @@ ifndef PLATFORM
     PLATFORM=macosx
     DISTDIR=Darwin_x86_64-gcc
     SOEXT=.dylib
-    CFLAGS += -static-libgcc
+    CFLAGS += -static-libgcc -arch i386 -arch x86_64 -DFB_MACOSX
   else ifeq ($(shell uname),FreeBSD)
     PLATFORM=bsd
 	  ifeq ($(LBITS),64)
