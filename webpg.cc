@@ -10,6 +10,10 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 
 #include "webpg.h"
 
+#ifdef H_EMSCRIPTEN
+#include "webpg-emsc.h"
+#endif
+
 /*
  * Define non-member constants/methods/inlines
  */
