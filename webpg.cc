@@ -24,7 +24,8 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 //  the path as homedir for gpg
 std::string GNUPGHOME;
 std::string GNUPGBIN;
-std::string GPGCONF;
+std::string GPGCONFHOME;
+std::string GPGCONFBIN;
 
 // A global holder for the current edit_fnc status
 std::string edit_status;
@@ -670,11 +671,15 @@ void webpg::init()
         : "UNKNOWN";
 
     response[proto_name] = protocol_info;
+    protocol_info.clear();
 
     engine_info = engine_info->next;
   }
 
   response["GNUPGHOME"] = GNUPGHOME;
+  response["GNUPGBIN"] = GNUPGBIN;
+  response["GPGCONFHOME"] = GPGCONFHOME;
+  response["GPGCONFBIN"] = GPGCONFBIN;
 
   // Retrieve the GPG_AGENT_INFO environment variable
   char *gpg_agent_info = getenv("GPG_AGENT_INFO");
@@ -706,20 +711,20 @@ gpgme_ctx_t webpg::get_gpgme_ctx()
   gpgme_set_locale (NULL, LC_MESSAGES, setlocale (LC_MESSAGES, NULL));
 #endif
 
-  // Check the GNUPGHOME variable, if not null, set that
-  if (GNUPGHOME.length() > 0) {
-    gpgme_new (&ctx);
-    gpgme_engine_info_t engine_info = gpgme_ctx_get_engine_info (ctx);
-    if (engine_info) {
-      gpgme_ctx_set_engine_info (ctx, GPGME_PROTOCOL_OpenPGP,
-                                      engine_info->file_name,
-                                      GNUPGHOME.c_str()
-      );
-    } else {
-      std::string env = "GNUPGHOME=" + GNUPGHOME;
-      putenv(strdup(env.c_str()));
-      gpgme_new (&ctx);
-    }
+  gpgme_new (&ctx);
+  gpgme_engine_info_t engine_info = gpgme_ctx_get_engine_info (ctx);
+
+  if (engine_info) {
+    gpgme_ctx_set_engine_info (ctx, GPGME_PROTOCOL_OpenPGP,
+                               (GNUPGBIN.length() > 0) ?
+                                 (char *) GNUPGBIN.c_str() : NULL,
+                               (GNUPGHOME.length() > 0) ?
+                                 (char *) GNUPGHOME.c_str() : NULL);
+    gpgme_ctx_set_engine_info (ctx, GPGME_PROTOCOL_GPGCONF,
+                               (GPGCONFBIN.length() > 0) ?
+                                 (char *) GPGCONFBIN.c_str() : NULL,
+                               (GPGCONFHOME.length() > 0) ?
+                                 (char *) GPGCONFBIN.c_str() : NULL);
   } else {
     gpgme_new (&ctx);
   }
@@ -798,11 +803,14 @@ bool webpg::openpgp_detected()
 ///////////////////////////////////////////////////////////////////////////////
 bool webpg::gpgconf_detected()
 {
-  gpgme_error_t err;
-  err = gpgme_engine_check_version (GPGME_PROTOCOL_GPGCONF);
-  if (err && err != GPG_ERR_NO_ERROR) {
+  gpgme_set_engine_info (GPGME_PROTOCOL_GPGCONF,
+      (GPGCONFBIN.length() > 0) ? (char *) GPGCONFBIN.c_str() : NULL,
+      (GPGCONFHOME.length() > 0) ? (char *) GPGCONFHOME.c_str() : NULL);
+  gpgme_error_t err = gpgme_engine_check_version (GPGME_PROTOCOL_GPGCONF);
+
+  if (err && err != GPG_ERR_NO_ERROR)
     return false;
-  }
+
   return true;
 }
 
@@ -1681,14 +1689,14 @@ Json::Value webpg::gpgGetBinary()
 ///////////////////////////////////////////////////////////////////////////////
 Json::Value webpg::gpgSetGPGConf(const std::string& gpgconf_exec)
 {
-  GPGCONF = gpgconf_exec;
+  GPGCONFBIN = gpgconf_exec;
   init();
-  return GPGCONF;
+  return GPGCONFBIN;
 }
 
 Json::Value webpg::gpgGetGPGConf()
 {
-  return GPGCONF;
+  return GPGCONFBIN;
 }
 
 

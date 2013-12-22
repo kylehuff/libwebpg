@@ -92,11 +92,6 @@ class webpg {
     //webpg();
     virtual ~webpg();
 
-    std::string GNUPGHOME;
-    std::string GNUPGBIN;
-    std::string GPGCONF;
-    int EXTERNAL;
-
     Json::Value webpg_status_map;
 
     ///////////////////////////////////////////////////////////////////////////
