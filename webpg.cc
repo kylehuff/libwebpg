@@ -4143,57 +4143,49 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
 
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
 // exported methods
+webpg webpg;
 extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.get_webpg_status().toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
 
-
   return fnOutputString.c_str();
 }
 
 extern "C" const char* getPublicKeyList_r(EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.getPublicKeyList().toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
 
-
   return fnOutputString.c_str();
 }
 
 extern "C" const char* getPrivateKeyList_r(EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.getPrivateKeyList().toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
 
-
   return fnOutputString.c_str();
 }
 
 extern "C" const char* getNamedKey_r(const char* name, EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.getNamedKey(name).toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
 
-
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getExternalKey_r(const char* name, EXTERN_FNC_CB callback) {
-  webpg webpg;
+extern "C" const char* getExternalKey_r(const char* name,
+                                        EXTERN_FNC_CB callback) {
   fnOutputString = webpg.getExternalKey(name).toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
-
 
   return fnOutputString.c_str();
 }
@@ -4201,24 +4193,20 @@ extern "C" const char* getExternalKey_r(const char* name, EXTERN_FNC_CB callback
 extern "C" const char* gpgSetPreference_r(const char* preference,
                                           const char* pref_value,
                                           EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.gpgSetPreference(preference, pref_value).toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
-
 
   return fnOutputString.c_str();
 }
 
 extern "C" const char* gpgGetPreference_r(const char* preference,
                                           EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.gpgGetPreference(preference).toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
-
 
   return fnOutputString.c_str();
 }
@@ -4226,12 +4214,96 @@ extern "C" const char* gpgGetPreference_r(const char* preference,
 extern "C" const char* gpgSetGroup_r(const char* group,
                                      const char* group_value,
                                      EXTERN_FNC_CB callback) {
-  webpg webpg;
   fnOutputString = webpg.gpgSetGroup(group, group_value).toStyledString();
 
   if (callback)
     callback(fnOutputString.c_str());
 
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* setTempGPGOption_r(const char* option,
+                                          const char* value,
+                                          EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.setTempGPGOption(option, value).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* restoreGPGConfig_r(EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.restoreGPGConfig().toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgSetHomeDir_r(const char* gnupg_path,
+                                       EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.gpgSetHomeDir(gnupg_path).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgGetHomeDir_r(EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.gpgGetHomeDir().toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgSetBinary_r(const char* gnupg_exec,
+                                       EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.gpgSetBinary(gnupg_exec).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgGetBinary_r(EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.gpgGetBinary().toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgSetGPGConf_r(const char* gpgconf_exec,
+                                       EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.gpgSetGPGConf(gpgconf_exec).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgGetGPGConf_r(EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.gpgGetGPGConf().toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* getTemporaryPath_r(EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.getTemporaryPath().toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
 
   return fnOutputString.c_str();
 }
@@ -4240,7 +4312,6 @@ extern "C" const char* gpgEncrypt_r(const char* data,
                                     const char* enc_to_keyids[],
                                     int key_count,
                                     EXTERN_FNC_CB callback) {
-  webpg webpg;
   Json::Value _enc_to_keyids;
 
   for (int i=0; i < key_count + 1; i++)
@@ -4253,7 +4324,6 @@ extern "C" const char* gpgEncrypt_r(const char* data,
   if (callback)
     callback(fnOutputString.c_str());
 
-
   return fnOutputString.c_str();
 }
 
@@ -4263,7 +4333,6 @@ extern "C" const char* gpgEncryptSign_r(const char* data,
                                         const char* signers[],
                                         int signer_count,
                                         EXTERN_FNC_CB callback) {
-  webpg webpg;
   Json::Value _enc_to_keyids, _signers;
 
   for (int i=0; i < key_count + 1; i++)
@@ -4280,6 +4349,52 @@ extern "C" const char* gpgEncryptSign_r(const char* data,
   if (callback)
     callback(fnOutputString.c_str());
 
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgSymmetricEnc_r(const char* data,
+                                         bool sign,
+                                         const char* signers[],
+                                         int signer_count,
+                                         EXTERN_FNC_CB callback) {
+  Json::Value _signers;
+
+  for (int i=0; i < signer_count + 1; i++)
+    _signers.append(signers[i]);
+
+  fnOutputString = webpg.gpgSymmetricEncrypt(data,
+                                             sign,
+                                            _signers).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgDecrypt_r(const char* data,
+                                    EXTERN_FNC_CB callback) {
+
+  fnOutputString = webpg.gpgDecrypt(data).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* gpgVerify_r(const char* data,
+                                   const char* plaintext,
+                                   EXTERN_FNC_CB callback) {
+
+  std::string pt;
+  if (strlen (plaintext) > 1)
+    pt = plaintext;
+
+  fnOutputString = webpg.gpgVerify(data, pt).toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
 
   return fnOutputString.c_str();
 }
@@ -4289,7 +4404,6 @@ extern "C" const char* gpgSignText_r(const char* data,
                                      int key_count,
                                      int sign_mode,
                                      EXTERN_FNC_CB callback) {
-  webpg webpg;
   Json::Value _signers;
 
   for (int i=0; i < key_count + 1; i++)
@@ -4302,7 +4416,6 @@ extern "C" const char* gpgSignText_r(const char* data,
   if (callback)
     callback(fnOutputString.c_str());
 
-
   return fnOutputString.c_str();
 }
 
@@ -4314,7 +4427,6 @@ extern "C" const char* gpgGenSubKey_r(const char* keyid,
                                       bool enc_flag,
                                       bool auth_flag,
                                       PROGRESS_CB callback) {
-  webpg webpg;
 
   fnOutputString = webpg.gpgGenSubKey(keyid,
                                       subkey_type,
