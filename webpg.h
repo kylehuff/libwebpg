@@ -89,7 +89,7 @@ typedef enum {
 ///////////////////////////////////////////////////////////////////////////////
 class webpg {
   public:
-    //webpg();
+    webpg();
     virtual ~webpg();
 
     Json::Value webpg_status_map;
@@ -302,7 +302,7 @@ class webpg {
     ///                 see https://bugs.g10code.com/gnupg/issue1440
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSymmetricEncrypt(
-                        const std::string& data,  
+                        const std::string& data,
                         const boost::optional<bool>& sign,
                         const boost::optional<Json::Value>& opt_signers
     );
@@ -379,9 +379,9 @@ class webpg {
                         const std::string& keyid,
                         long uid,
                         const std::string& with_keyid,
-                        long local_only=NULL,
-                        long trust_sign=NULL,
-                        long trust_level=NULL,
+                        long local_only,
+                        long trust_sign,
+                        long trust_level,
                         const boost::optional<std::string>& notation_name=NULL,
                         const boost::optional<std::string>& notation_value=NULL
     );

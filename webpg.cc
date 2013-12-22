@@ -588,10 +588,10 @@ using namespace boost::archive::iterators;
 ///
 /// @brief  Constructor for the webpg object. Performs object initialization.
 ///////////////////////////////////////////////////////////////////////////////
-//webpg::webpg()
-//{
-//  webpg::init();
-//}
+webpg::webpg()
+{
+  webpg::init();
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn webpg::~webpg()
@@ -790,9 +790,10 @@ bool webpg::openpgp_detected()
       (GNUPGBIN.length() > 0) ? (char *) GNUPGBIN.c_str() : NULL,
       (GNUPGHOME.length() > 0) ? (char *) GNUPGHOME.c_str() : NULL);
   gpgme_error_t err = gpgme_engine_check_version (GPGME_PROTOCOL_OpenPGP);
-  if (err && err != GPG_ERR_NO_ERROR) {
+
+  if (err && err != GPG_ERR_NO_ERROR)
     return false;
-  }
+
   return true;
 }
 
@@ -1852,7 +1853,8 @@ Json::Value webpg::gpgEncrypt(const std::string& data,
 
   if (sign && sign == true) {
     if (enc_to_keyids.size() < 1) {
-      err = gpgme_op_encrypt_sign (ctx, NULL, GPGME_ENCRYPT_NO_ENCRYPT_TO, in, out);
+      err = gpgme_op_encrypt_sign (ctx, NULL, GPGME_ENCRYPT_NO_ENCRYPT_TO,
+                                   in, out);
     } else {
       err = gpgme_op_encrypt_sign (ctx, key, GPGME_ENCRYPT_ALWAYS_TRUST,
                                    in, out);
@@ -2060,7 +2062,8 @@ Json::Value webpg::gpgDecryptVerify(const std::string& data,
   decrypt_result = gpgme_op_decrypt_result (ctx);
   verify_result = gpgme_op_verify_result (ctx);
   
-  if (decrypt_result && decrypt_result->file_name)
+  if (decrypt_result && decrypt_result->file_name
+      && strlen(decrypt_result->file_name) > 4)
     response["filename"] = (char *) decrypt_result->file_name;
 
   if (use_agent == 0) {
@@ -3040,7 +3043,8 @@ Json::Value webpg::gpgImportExternalKey(const std::string& keyid)
   Json::Value imports_map;
   int nimport = 0;
   gpgme_import_status_t import;
-  for (nimport=0, import=result->imports; import; import = import->next, nimport++) {
+  for (nimport=0, import=result->imports; import; import = import->next,
+       nimport++) {
     Json::Value import_item_map;
     import_item_map["fingerprint"] = nonnull (import->fpr);
     import_item_map["result"] = gpgme_strerror(import->result);
@@ -3811,7 +3815,8 @@ Json::Value webpg::gpgChangePassphrase(const std::string& keyid)
         -5: the domain uid was signed by a disabled key
         -4: the  sinature has been revoked, disabled or is invalid
         -3: the uid has been revoked or is disabled or invalid.
-        -2: the key belonging to the domain has been revoked or disabled, or is invalid.
+        -2: the key belonging to the domain has been revoked or disabled, or
+             is invalid.
         -1: the domain uid was not signed by any enabled private key and fails
              web-of-trust
         0: UID of domain_keyid was signed by an ultimately trusted private key
@@ -3865,7 +3870,8 @@ int webpg::verifyDomainKey(const std::string& domain,
             domain_key_valid = -2;
             break;
           }
-          if (!strcmp(uid->name, (char *) domain.c_str()) && (uid_idx == nuids || uid_idx == -1)) {
+          if (!strcmp(uid->name, (char *) domain.c_str())
+              && (uid_idx == nuids || uid_idx == -1)) {
             if (uid->revoked)
               domain_key_valid = -3;
             if (!strcmp(sig->keyid, (char *) required_sig_keyid.c_str())) {
@@ -3906,8 +3912,8 @@ int webpg::verifyDomainKey(const std::string& domain,
     if (!result && result->truncated == 1)
     return -1;
         
-    // the UID failed the signature test, check to see if the primary UID was signed
-    // by one permissible key, or a trusted key.
+    // the UID failed the signature test, check to see if the primary UID was
+    // signed by one permissible key, or a trusted key.
     if (domain_key_valid == -1) {
       for (nuids=0, uid=domain_key->uids; uid; uid = uid->next, nuids++) {
         for (nsig=0, sig=uid->signatures; sig; sig=sig->next, nsig++) {
