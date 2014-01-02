@@ -953,10 +953,11 @@ Json::Value webpg::getKeyList(
     This method executes webpg::getKeyList with an empty string and
         secret_only=false which returns all Public Keys in the keyring.
 */
-Json::Value webpg::getPublicKeyList(boost::optional<bool> fast=false)
+Json::Value webpg::getPublicKeyList(const boost::optional<bool> fast=false)
 {
+  bool fastListMode = (fast==true);
   // Retrieve the public keylist
-  return getKeyList("", false, *fast);
+  return getKeyList("", false, fastListMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -971,10 +972,11 @@ Json::Value webpg::getPublicKeyList(boost::optional<bool> fast=false)
         secret_only=true which returns all keys in the keyring which
         the user has the corrisponding secret key.
 */
-Json::Value webpg::getPrivateKeyList(boost::optional<bool> fast=false)
+Json::Value webpg::getPrivateKeyList(const boost::optional<bool> fast=false)
 {
+  bool fastListMode = (fast==true);
   // Retrieve the private keylist
-  return getKeyList("", true, *fast);
+  return getKeyList("", true, fastListMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -989,10 +991,11 @@ Json::Value webpg::getPrivateKeyList(boost::optional<bool> fast=false)
         as the parameter
 */
 Json::Value webpg::getNamedKey(const std::string& name,
-                               boost::optional<bool> fast=false)
+                               const boost::optional<bool> fast=false)
 {
+  bool fastListMode = (fast==true);
   // Retrieve the named key from the keylist
-  return getKeyList(name, false, *fast);
+  return getKeyList(name, false, fastListMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

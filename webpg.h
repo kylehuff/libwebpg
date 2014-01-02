@@ -163,7 +163,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getNamedKey(
       const std::string& name,
-      boost::optional<bool> fast
+      const boost::optional<bool> fast
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ class webpg {
     ///         string, and the secret_only paramter as false, which returns only
     ///         Public Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getPublicKeyList(boost::optional<bool> fast);
+    Json::Value getPublicKeyList(const boost::optional<bool> fast);
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getPrivateKeyList()
@@ -191,7 +191,7 @@ class webpg {
     ///         string, and the secret_only paramter as true, which returns only
     ///         Private Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getPrivateKeyList(boost::optional<bool> fast);
+    Json::Value getPrivateKeyList(const boost::optional<bool> fast);
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string get_preference(const std::string& preference)
