@@ -2477,12 +2477,71 @@ void webpg::status_progress_cb(
   s_callback("onstatusprogress", msg);
 }
 
-//unsigned int webpg::getPublicKeyListCount() {
-//  unsigned int keycount = 0;
-//  gpgme_ctx_t ctx = get_gpgme_ctx();
-//  gpgme_error_t err;
-//  gpgme_key_t key;
-//}
+Json::Value webpg::getKeyCount() {
+  gpgme_ctx_t ctx = get_gpgme_ctx();
+  gpgme_error_t err;
+  gpgme_key_t key;
+  Json::Value keycount;
+  gpgme_keylist_result_t result;
+
+  unsigned int pubKeyCount = 0,
+               priKeyCount = 0;
+
+  /* set protocol to use in our context */
+  err = gpgme_set_protocol(ctx, GPGME_PROTOCOL_OpenPGP);
+  if(err != GPG_ERR_NO_ERROR)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  err = gpgme_set_keylist_mode (ctx,
+    GPGME_KEYLIST_MODE_LOCAL &
+    ~GPGME_KEYLIST_MODE_SIGS &
+    ~GPGME_KEYLIST_MODE_SIG_NOTATIONS
+  );
+
+  if(err != GPG_ERR_NO_ERROR)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  err = gpgme_op_keylist_start (ctx, NULL, 0);
+
+  if(err != GPG_ERR_NO_ERROR)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  while (!(err = gpgme_op_keylist_next (ctx, &key))) {
+    pubKeyCount++;
+    gpgme_key_unref (key);
+  }
+
+  err = gpgme_op_keylist_end (ctx);
+
+  if(err != GPG_ERR_NO_ERROR)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  err = gpgme_op_keylist_start (ctx, NULL, 1);
+
+  if(err != GPG_ERR_NO_ERROR)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  while (!(err = gpgme_op_keylist_next (ctx, &key))) {
+    priKeyCount++;
+    gpgme_key_unref (key);
+  }
+
+  if (gpg_err_code (err) != GPG_ERR_EOF)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  result = gpgme_op_keylist_result (ctx);
+
+  if (result->truncated)
+    return get_error_map(__func__, err, __LINE__, __FILE__);
+
+  gpgme_release (ctx);
+
+  keycount["public_keys"] = pubKeyCount;
+  keycount["private_keys"] = priKeyCount;
+  keycount["total"] = pubKeyCount + priKeyCount;
+
+  return keycount;
+}
 
 Json::Value webpg::getKeyListWorker(
     const std::string& name,
@@ -2515,12 +2574,20 @@ Json::Value webpg::getKeyListWorker(
 
   /* determine if we are in fast-list mode - we don't want signatures or
       notations in fast-list mode */
-  if (!fast || fast == 0) {
-    /* apply the keylist mode to the context and set
-        the keylist_mode 
+  if (fast || fast == true || fast == 1) {
+    /* apply the keylist mode to the context */
+    gpgme_set_keylist_mode (ctx,
+      (gpgme_get_keylist_mode (ctx) |
+      (GPGME_KEYLIST_MODE_LOCAL &
+      ~GPGME_KEYLIST_MODE_SIGS &
+      ~GPGME_KEYLIST_MODE_SIG_NOTATIONS))
+    );
+  } else {
+    /* apply the keylist mode to the context
         NOTE: The keylist mode flag GPGME_KEYLIST_MODE_SIGS 
             returns the signatures of UIDS with the key */
     gpgme_set_keylist_mode (ctx, (gpgme_get_keylist_mode (ctx)
+                                | GPGME_KEYLIST_MODE_LOCAL
                                 | GPGME_KEYLIST_MODE_SIGS
                                 | GPGME_KEYLIST_MODE_SIG_NOTATIONS));
   }
@@ -3635,10 +3702,6 @@ Json::Value webpg::gpgPublishPublicKey(const std::string& keyid)
   key_array[0] = key;
   key_array[1] = NULL;
 
-  err = gpgme_set_keylist_mode (ctx, GPGME_KEYLIST_MODE_EXTERN);
-  if (err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
-
   mode |= GPGME_KEYLIST_MODE_EXTERN;
 
   err = gpgme_op_export_keys (ctx, key_array, mode, 0);
@@ -3921,7 +3984,8 @@ int webpg::verifyDomainKey(
   gpgme_key_sig_t sig;
   gpgme_error_t err;
 
-  gpgme_set_keylist_mode (ctx, (gpgme_get_keylist_mode (ctx) 
+  gpgme_set_keylist_mode (ctx, (gpgme_get_keylist_mode (ctx)
+                                | GPGME_KEYLIST_MODE_LOCAL
                                 | GPGME_KEYLIST_MODE_SIGS));
 
   err = gpgme_op_keylist_start (ctx, (char *) domain_key_fpr.c_str(), 0);
@@ -4068,7 +4132,12 @@ void webpg::gpgShowPhoto(const std::string& keyid) {
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_ctx_t edit_ctx = get_gpgme_ctx();
   gpgme_key_t key;
-  gpgme_set_keylist_mode (ctx, (GPGME_KEYLIST_MODE_LOCAL));
+  gpgme_set_keylist_mode (ctx,
+    (gpgme_get_keylist_mode (ctx) |
+    (GPGME_KEYLIST_MODE_LOCAL &
+    ~GPGME_KEYLIST_MODE_SIGS &
+    ~GPGME_KEYLIST_MODE_SIG_NOTATIONS))
+  );
   err = gpgme_get_key(ctx, keyid.c_str(), &key, 0);
   if (err ==  GPG_ERR_NO_ERROR) {
     gpgme_data_t out;
@@ -4565,12 +4634,14 @@ int main(int argc, char* argv[]) {
 
       if (func == "get_webpg_status")
         res = webpg.get_webpg_status();
+      else if (func == "getKeyCount")
+        res = webpg.getKeyCount();
       else if (func == "getNamedKey")
         res = webpg.getNamedKey(params[0].asString());
       else if (func == "getPublicKeyList")
         res = webpg.getPublicKeyList();
       else if (func == "getPrivateKeyList")
-        res = webpg.getPrivateKeyList();
+        res = webpg.getPrivateKeyList(params[0].asBool());
       else if (func == "getExternalKey")
         res = webpg.getExternalKey(params[0].asString());
       else if (func == "gpgSetPreference")
