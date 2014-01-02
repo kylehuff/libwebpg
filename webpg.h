@@ -123,6 +123,19 @@ class webpg {
 
     void FireEvent(const char* event, Json::Value type);
 
+    Json::Value getKeyCount();
+
+    Json::Value getKeyListWorker(
+      const std::string& name,
+      bool secret_only,
+      bool fast,
+      void* APIObj,
+      void(*cb_status)(
+        void *self,
+        const std::string& msg
+      )
+    );
+
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getKeyList(cont std::string& name, bool secret_only)
     ///
@@ -179,17 +192,6 @@ class webpg {
     ///         Private Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getPrivateKeyList(boost::optional<bool> fast);
-
-    Json::Value getKeyListWorker(
-      const std::string& name,
-      bool secret_only,
-      bool fast,
-      void* APIObj,
-      void(*cb_status)(
-        void *self,
-        const std::string& msg
-      )
-    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string get_preference(const std::string& preference)
