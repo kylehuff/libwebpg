@@ -38,7 +38,10 @@ typedef char* (*TYPE_webpg)(void);
 
 // Used for allowing caller to assign a callback method
 typedef void (*EXTERN_FNC_CB)(const char*);
-typedef void (*PROGRESS_CB)(const char*, const char*);
+typedef void (*GENKEY_PROGRESS_CB)(const char*, const char*);
+typedef void (*STATUS_PROGRESS_CB)(const std::string&, const std::string&);
+typedef void (*STATUS_CB)(void*, const std::string&);
+typedef void (*pluginAPI)(void*);
 
 typedef struct {
   std::string key_type;
@@ -91,6 +94,7 @@ class webpg {
   public:
     webpg();
     virtual ~webpg();
+    pluginAPI* plugin;
 
     Json::Value webpg_status_map;
 
@@ -120,29 +124,41 @@ class webpg {
     void FireEvent(const char* event, Json::Value type);
 
     ///////////////////////////////////////////////////////////////////////////
-    /// @fn Json::Value getKeyList(cont std::string& name, int secret_only)
+    /// @fn Json::Value getKeyList(cont std::string& name, bool secret_only)
     ///
     /// @brief  Retrieves all keys matching name, or if name is not specified,
     ///         returns all keys in the keyring. The keyring to use is determined
     ///         by the integer value of secret_only.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getKeyList(const std::string& name, int secret_only);
+    Json::Value getKeyList(
+      const std::string& name,
+      bool secret_only,
+      bool fast,
+      void* APIObj,
+      void(*cb_status)(
+        void *self,
+        const std::string& msg
+      )
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getNamedKey(const std::string& name)
     ///
     /// @brief  Calls getKeyList() with a search string and the
-    ///         secret_only paramter as "0", which returns only Public Keys
+    ///         secret_only paramter as false, which returns only Public Keys
     ///         from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getNamedKey(const std::string& name);
+    Json::Value getNamedKey(
+      const std::string& name,
+      boost::optional<bool> fast
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getExternalKey(const std::string& name)
     ///
     /// @brief  Calls getKeyList() after setting the context to 
     ///         external mode with a search string and the secret_only paramter as
-    ///         "0", which returns only Public Keys
+    ///         false, which returns only Public Keys
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getExternalKey(const std::string& name);
 
@@ -150,19 +166,30 @@ class webpg {
     /// @fn Json::Value getPublicKeyList()
     ///
     /// @brief  Calls getKeyList() without specifying a search
-    ///         string, and the secret_only paramter as "0", which returns only
+    ///         string, and the secret_only paramter as false, which returns only
     ///         Public Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getPublicKeyList();
+    Json::Value getPublicKeyList(boost::optional<bool> fast);
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getPrivateKeyList()
     ///
     /// @brief  Calls getKeyList() without specifying a search
-    ///         string, and the secret_only paramter as "1", which returns only
+    ///         string, and the secret_only paramter as true, which returns only
     ///         Private Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getPrivateKeyList();
+    Json::Value getPrivateKeyList(boost::optional<bool> fast);
+
+    Json::Value getKeyListWorker(
+      const std::string& name,
+      bool secret_only,
+      bool fast,
+      void* APIObj,
+      void(*cb_status)(
+        void *self,
+        const std::string& msg
+      )
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string get_preference(const std::string& preference)
@@ -184,8 +211,10 @@ class webpg {
     /// @param  preference  The preference to set.
     /// @param  pref_value  The value to assign to the specified preference. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgSetPreference(const std::string& preference,
-        const std::string& pref_value="blank");
+    Json::Value gpgSetPreference(
+      const std::string& preference,
+      const std::string& pref_value
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgSetGroup(const std::string& group,
@@ -197,8 +226,10 @@ class webpg {
     /// @param  group  The group to set.
     /// @param  group_value  The value to assign to the specified group. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgSetGroup(const std::string& group,
-        const std::string& group_value="");
+    Json::Value gpgSetGroup(
+      const std::string& group,
+      const std::string& group_value
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string gpgGetPreference(const std::string& preference)
@@ -226,8 +257,10 @@ class webpg {
     ///         gpg.conf; This should be called prior to initializing the
     ///         gpgme context.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value setTempGPGOption(const std::string& option,
-        const std::string& value=NULL);
+    Json::Value setTempGPGOption(
+      const std::string& option,
+      const std::string& value
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value restoreGPGConfig()
@@ -284,10 +317,10 @@ class webpg {
     /// @param  sign    The data should be also be signed.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgEncrypt(
-                       const std::string& data,
-                       const Json::Value& enc_to_keyids,
-                       const boost::optional<bool>& sign,
-                       const boost::optional<Json::Value>& opt_signers
+      const std::string& data,
+      const Json::Value& enc_to_keyids,
+      const boost::optional<bool>& sign,
+      const boost::optional<Json::Value>& opt_signers
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -302,9 +335,9 @@ class webpg {
     ///                 see https://bugs.g10code.com/gnupg/issue1440
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSymmetricEncrypt(
-                        const std::string& data,
-                        const boost::optional<bool>& sign,
-                        const boost::optional<Json::Value>& opt_signers
+      const std::string& data,
+      const boost::optional<bool>& sign,
+      const boost::optional<Json::Value>& opt_signers
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -323,9 +356,9 @@ class webpg {
     /// @param  use_agent   Attempt to disable the gpg-agent.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgDecryptVerify(
-                        const std::string& data,
-                        const std::string& plaintext,
-                        int use_agent
+      const std::string& data,
+      const std::string& plaintext,
+      int use_agent
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -339,8 +372,8 @@ class webpg {
     Json::Value gpgDecrypt(const std::string& data);
 
     Json::Value gpgVerify(
-                        const std::string& data,
-                        const boost::optional<std::string>& plaintext
+      const std::string& data,
+      const boost::optional<std::string>& plaintext
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -352,9 +385,10 @@ class webpg {
     ///         specified in <signers>, with the signature mode specified in
     ///         <sign_mode>.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgSignText(const std::string& plain_text,
-                            const Json::Value& signers,
-                            const boost::optional<int>& opt_sign_mode
+    Json::Value gpgSignText(
+      const std::string& plain_text,
+      const Json::Value& signers,
+      const boost::optional<int>& opt_sign_mode
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -376,14 +410,14 @@ class webpg {
     /// @param  trust_level The level of trust to assign.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSignUID(
-                        const std::string& keyid,
-                        long uid,
-                        const std::string& with_keyid,
-                        long local_only,
-                        long trust_sign,
-                        long trust_level,
-                        const boost::optional<std::string>& notation_name=NULL,
-                        const boost::optional<std::string>& notation_value=NULL
+      const std::string& keyid,
+      long uid,
+      const std::string& with_keyid,
+      long local_only,
+      long trust_sign,
+      long trust_level,
+      const boost::optional<std::string>& notation_name,
+      const boost::optional<std::string>& notation_value
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -398,9 +432,9 @@ class webpg {
     /// @param  signature The index of signature to delete.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgDeleteUIDSign(
-                        const std::string& keyid,
-                        long sign_uid,
-                        long signature
+      const std::string& keyid,
+      long sign_uid,
+      long signature
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -445,16 +479,16 @@ class webpg {
     /// @param  passphrase    The passphrase to assign the to the key.
     ///////////////////////////////////////////////////////////////////////////
     std::string gpgGenKey(
-                        const std::string& key_type,
-                        const std::string& key_length,
-                        const std::string& subkey_type,
-                        const std::string& subkey_length,
-                        const std::string& name_real,
-                        const std::string& name_comment,
-                        const std::string& name_email,
-                        const std::string& expire_date,
-                        const std::string& passphrase,
-                        PROGRESS_CB callback
+      const std::string& key_type,
+      const std::string& key_length,
+      const std::string& subkey_type,
+      const std::string& subkey_length,
+      const std::string& name_real,
+      const std::string& name_comment,
+      const std::string& name_email,
+      const std::string& expire_date,
+      const std::string& passphrase,
+      GENKEY_PROGRESS_CB callback=NULL
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -472,14 +506,16 @@ class webpg {
     /// @param  enc_flag    Set the encrypt capabilities flag.
     /// @param  auth_flag  Set the auth capabilities flag.
     ///////////////////////////////////////////////////////////////////////////
-    std::string gpgGenSubKey(const std::string& keyid,
-                             const std::string& subkey_type,
-                             const std::string& subkey_length,
-                             const std::string& subkey_expire,
-                             bool sign_flag,
-                             bool enc_flag,
-                             bool auth_flag,
-                             PROGRESS_CB callback=NULL);
+    std::string gpgGenSubKey(
+      const std::string& keyid,
+      const std::string& subkey_type,
+      const std::string& subkey_length,
+      const std::string& subkey_expire,
+      bool sign_flag,
+      bool enc_flag,
+      bool auth_flag,
+      GENKEY_PROGRESS_CB callback=NULL
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgImportKey(const std::string& ascii_key)
@@ -564,8 +600,12 @@ class webpg {
     /// @param  email   The email address to assign to the new UID.
     /// @param  comment The comment to assign to the new UID.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgAddUID(const std::string& keyid, const std::string& name,
-        const std::string& email, const std::string& comment);
+    Json::Value gpgAddUID(
+        const std::string& keyid,
+        const std::string& name,
+        const std::string& email,
+        const std::string& comment
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgDeleteUID(const std::string& keyid, long uid_idx)
@@ -628,9 +668,11 @@ class webpg {
     /// @param  key_idx The index of the subkey to set the expiration on.
     /// @param  expire  The expiration to assign to the key.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgSetSubkeyExpire(const std::string& keyid,
-                                   long key_idx,
-                                   long expire);
+    Json::Value gpgSetSubkeyExpire(
+      const std::string& keyid,
+      long key_idx,
+      long expire
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgExportPublicKey(const std::string& keyid)
@@ -667,13 +709,15 @@ class webpg {
     /// @param  reason  The gnupg reason for the revocation.
     /// @param  desc    The text description for the revocation.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgRevokeItem(const std::string& keyid,
-                              const std::string& item,
-                              int key_idx,
-                              int uid_idx,
-                              int sig_idx,
-                              int reason_idx,
-                              const std::string& desc);
+    Json::Value gpgRevokeItem(
+      const std::string& keyid,
+      const std::string& item,
+      int key_idx,
+      int uid_idx,
+      int sig_idx,
+      int reason_idx,
+      const std::string& desc
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgRevokeKey(const std::string& keyid,
@@ -689,9 +733,11 @@ class webpg {
     /// @param  reason  The gnupg reason for the revocation.
     /// @param  desc    The text description for the revocation.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgRevokeKey(const std::string& keyid,
-                             int key_idx, int reason,
-                             const std::string &desc);
+    Json::Value gpgRevokeKey(
+      const std::string& keyid,
+      int key_idx, int reason,
+      const std::string &desc
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgRevokeUID(const std::string& keyid,
@@ -707,8 +753,12 @@ class webpg {
     /// @param  reason  The gnupg reason for the revocation.
     /// @param  desc    The text description for the revocation.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgRevokeUID(const std::string& keyid, int uid_idx, int reason,
-        const std::string &desc);
+    Json::Value gpgRevokeUID(
+        const std::string& keyid,
+        int uid_idx,
+        int reason,
+        const std::string &desc
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgRevokeSignature(const std::string& keyid,
@@ -726,11 +776,13 @@ class webpg {
     /// @param  reason  The gnupg reason for the revocation.
     /// @param  desc    The text description for the revocation.
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value gpgRevokeSignature(const std::string& keyid,
-                                   int uid_idx,
-                                   int sig_idx,
-                                   int reason,
-                                   const std::string &desc);
+    Json::Value gpgRevokeSignature(
+      const std::string& keyid,
+      int uid_idx,
+      int sig_idx,
+      int reason,
+      const std::string &desc
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgChangePassphrase(const std::string& keyid)
@@ -742,17 +794,19 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgChangePassphrase(const std::string& keyid);
 
-    int verifyDomainKey(const std::string& domain, 
-                        const std::string& domain_key_fpr,
-                        long uid_idx,
-                        const std::string& required_sig_keyid
+    int verifyDomainKey(
+      const std::string& domain, 
+      const std::string& domain_key_fpr,
+      long uid_idx,
+      const std::string& required_sig_keyid
     );
 
     void gpgShowPhoto(const std::string& keyid);
 
-    Json::Value gpgAddPhoto(const std::string& keyid,
-                            const std::string& photo_name,
-                            const std::string& photo_data
+    Json::Value gpgAddPhoto(
+      const std::string& keyid,
+      const std::string& photo_name,
+      const std::string& photo_data
     );
 
     Json::Value gpgGetPhotoInfo(const std::string& keyid);
@@ -781,7 +835,7 @@ class webpg {
     std::string original_gpg_config;
 
     ///////////////////////////////////////////////////////////////////////////
-    /// @fn void progress_cb(void *self,
+    /// @fn void genkey_progress_cb(void *self,
     ///                      const char *what,
     ///                      int type,
     ///                      int current,
@@ -797,11 +851,17 @@ class webpg {
     /// @param  current ?
     /// @param  total   ?
     ///////////////////////////////////////////////////////////////////////////
-    static void progress_cb(void *self,
-                            const char *what,
-                            int type,
-                            int current,
-                            int total
+    static void genkey_progress_cb(
+      void *self,
+      const char *what,
+      int type,
+      int current,
+      int total
+    );
+
+    void status_progress_cb(
+      void *self,
+      const std::string& msg
     );
 
 //    gpgme_error_t passdefunct_cb(
@@ -810,11 +870,7 @@ class webpg {
 //    );
 
     ///////////////////////////////////////////////////////////////////////////////
-    /// @fn std::string gpgGenKeyWorker(const std::string& key_type,
-    ///                                 const std::string& key_length, 
-    ///        const std::string& subkey_type, const std::string& subkey_length, const std::string& name_real, 
-    ///        const std::string& name_comment, const std::string& name_email, const std::string& expire_date, 
-    ///        const std::string& passphrase, void* APIObj,
+    /// @fn std::string gpgGenKeyWorker(genKeyParams& params, void* APIObj,
     ///        void(*cb_status)(
     ///            void *self,
     ///            const char *what,
