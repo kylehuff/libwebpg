@@ -579,19 +579,19 @@ using namespace boost::archive::iterators;
 ///
 /// @brief  Constructor for the webpg object. Performs object initialization.
 ///////////////////////////////////////////////////////////////////////////////
-webpg::webpg()
-{
-  webpg::init();
-}
+//webpg::webpg()
+//{
+//  webpg::init();
+//}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn webpg::~webpg()
 ///
 /// @brief  Destructor.
 ///////////////////////////////////////////////////////////////////////////////
-webpg::~webpg()
-{
-}
+//webpg::~webpg()
+//{
+//}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn void init()
@@ -2337,12 +2337,15 @@ Json::Value webpg::gpgEnableKey(const std::string& keyid)
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
-  gpgme_data_release (out);
+  size_t out_size = 0;
+  std::string out_buf;
+  out_buf = gpgme_data_release_and_get_mem (out, &out_size);
   gpgme_key_unref (key);
   gpgme_release (ctx);
 
   response["error"] = false;
   response["result"] = "key enabled";
+  response["out"] = out_buf;
 
   return response;
 }
@@ -2601,7 +2604,7 @@ Json::Value webpg::getKeyListWorker(
     EXTERNAL = 0;
   }
 
-  if (name.length() > 0){ // limit key listing to search criteria 'name'
+  if (name.length() > 0) { // limit key listing to search criteria 'name'
     err = gpgme_op_keylist_start (ctx, name.c_str(), secret_only);
   } else { // list all keys
     err = gpgme_op_keylist_start (ctx, NULL, secret_only);
@@ -2626,6 +2629,8 @@ Json::Value webpg::getKeyListWorker(
     /* iterate through the keys/subkeys and add them to the key_map object */
     if (key->uids && key->uids->name)
         key_map["name"] = nonnull (key->uids->name);
+    if (key->subkeys && key->subkeys->keyid)
+        key_map["id"] = nonnull (key->subkeys->keyid);
     if (key->subkeys && key->subkeys->fpr)
         key_map["fingerprint"] = nonnull (key->subkeys->fpr);
     if (key->uids && key->uids->email)
@@ -2634,7 +2639,7 @@ Json::Value webpg::getKeyListWorker(
     key_map["revoked"] = key->revoked? true : false;
     key_map["disabled"] = key->disabled? true : false;
     key_map["invalid"] = key->invalid? true : false;
-    key_map["secret"] = key->secret? true : false;
+    key_map["secret"] = (secret_only)? true : false;
     key_map["protocol"] =
         key->protocol == GPGME_PROTOCOL_OpenPGP? "OpenPGP":
         key->protocol == GPGME_PROTOCOL_CMS? "CMS":
@@ -2735,29 +2740,43 @@ Json::Value webpg::getKeyListWorker(
 
     if (cb_status != NULL)
       cb_status(APIObj, writer.write(key_map));
+    else if (name.length() > 0)
+      keylist_map = key_map;
     else
       keylist_map[key->subkeys->keyid] = key_map;
 
     gpgme_key_unref (key);
   }
 
-  if (gpg_err_code (err) != GPG_ERR_EOF)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
+  if (gpg_err_code (err) != GPG_ERR_EOF) {
+    if (cb_status != NULL)
+      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)));
+    else
+      return get_error_map(__func__, err, __LINE__, __FILE__);
+  }
 
   err = gpgme_op_keylist_end (ctx);
 
-  if(err != GPG_ERR_NO_ERROR)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
+  if(err != GPG_ERR_NO_ERROR) {
+    if (cb_status != NULL)
+      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)));
+    else
+      return get_error_map(__func__, err, __LINE__, __FILE__);
+  }
 
   result = gpgme_op_keylist_result (ctx);
 
-  if (result->truncated)
-    return get_error_map(__func__, err, __LINE__, __FILE__);
+  if (result->truncated) {
+    if (cb_status != NULL)
+      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)));
+    else
+      return get_error_map(__func__, err, __LINE__, __FILE__);
+  }
 
   gpgme_release (ctx);
 
   if (cb_status != NULL)
-    keylist_map["status"] = "queued";
+    cb_status(APIObj, "{\"status\": \"complete\"}");
 
   return keylist_map;
 }
@@ -4052,7 +4071,7 @@ int webpg::verifyDomainKey(
     if (domain_key_valid == -1) {
       for (nuids=0, uid=domain_key->uids; uid; uid = uid->next, nuids++) {
         for (nsig=0, sig=uid->signatures; sig; sig=sig->next, nsig++) {
-          if (!sig->status == GPG_ERR_NO_ERROR)
+          if (sig->status != GPG_ERR_NO_ERROR)
             continue;
           // the signature keyid matches the required_sig_keyid
           if (nuids == uid_idx && domain_key_valid == -1) {

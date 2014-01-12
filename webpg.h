@@ -92,8 +92,8 @@ typedef enum {
 ///////////////////////////////////////////////////////////////////////////////
 class webpg {
   public:
-    webpg();
-    virtual ~webpg();
+//    webpg();
+//    virtual ~webpg();
     pluginAPI* plugin;
 
     Json::Value webpg_status_map;
