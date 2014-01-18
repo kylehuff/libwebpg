@@ -4269,12 +4269,16 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   gpgme_op_edit (ctx, key, edit_fnc, NULL, out);
   std::string out_buf = gpgme_data_release_and_get_mem (out, &out_size);
 
+   
   response["photos_provided"] = 0;
 
   std::string s = "uat:";
 
-  if (out_buf.find(s) == std::string::npos)
+  if (out_buf.find(s) == std::string::npos) {
+    Json::Value photo_map;
+    response["photos"] = photo_map;
     return response;
+  }
 
   for (nuids=0, uid=key->uids; uid; uid = uid->next)
     nuids++;
