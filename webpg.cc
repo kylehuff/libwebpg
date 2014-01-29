@@ -2561,6 +2561,7 @@ Json::Value webpg::getKeyListWorker(
 ) {
   /* declare variables */
   int keycount = 0;
+  bool return_list = false;
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_error_t err;
   gpgme_key_t key;
@@ -2602,6 +2603,7 @@ Json::Value webpg::getKeyListWorker(
     err = gpgme_set_keylist_mode (ctx, GPGME_KEYLIST_MODE_EXTERN
                                        | GPGME_KEYLIST_MODE_SIGS);
     EXTERNAL = 0;
+    return_list = true;
   }
 
   if (name.length() > 0) { // limit key listing to search criteria 'name'
@@ -2740,7 +2742,7 @@ Json::Value webpg::getKeyListWorker(
 
     if (cb_status != NULL)
       cb_status(APIObj, writer.write(key_map));
-    else if (name.length() > 0)
+    else if (return_list == false && name.length() > 0)
       keylist_map = key_map;
     else
       keylist_map[key->subkeys->keyid] = key_map;
