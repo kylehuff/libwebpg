@@ -24,6 +24,10 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #include <gpgme.h>
 #include "libs/jsoncpp/include/json/json.h"
 
+#include <mimetic/mimetic.h>
+#include <mimetic/streambufs.h>
+#include <curl.h>
+
 #ifdef HAVE_W32_SYSTEM
 #include <windows.h>
 #ifdef _WIN64
@@ -32,6 +36,20 @@ typedef __int64 ssize_t;
 typedef int ssize_t;
 #endif
 #endif
+
+#define WEBPG_VERSION_STRING "0.9"
+#define WEBPG_PGPMIME_ENCRYPTED 1
+#define WEBPG_PGPMIME_SIGNED 2
+#define WEBPG_MIME_VERSION_MAJOR 1
+#define WEBPG_MIME_VERSION_MINOR 0
+#define WEBPG_MIME_VERSION_STRING "1.0"
+#define NEWLINE '\n'
+
+typedef struct {
+  char *data;
+  int body_size;
+  int body_pos;
+} readarg_t;
 
 // remove?
 typedef char* (*TYPE_webpg)(void);
@@ -933,10 +951,16 @@ class webpg {
         )
     );
 
-    Json::Value send_smtp(const std::string& bearer);
     Json::Value sendMessage(const Json::Value& msgInfo);
 
 private:
   // Private constructs
+  mimetic::MultipartMixed createMessage(
+      const Json::Value& recipients_m,
+      const Json::Value& signers,
+      int messageType, // Signed, Encrypted
+      const std::string& subject,
+      const std::string& msgBody
+  );
 
 };

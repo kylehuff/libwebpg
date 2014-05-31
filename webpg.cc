@@ -548,8 +548,8 @@ gpgme_error_t edit_fnc(
     } else if (!strcmp (args, "passphrase.enter")) {
       response = "";
     } else {
-      fprintf(stdout, "We should never reach this line; Line: %i\n", __LINE__);
-      std::cout << "Line: " << __LINE__ << "; " << edit_status << std::endl;
+      std::cerr << "We should never reach this line; Line: " << __LINE__ << std::endl
+        << edit_status << std::endl;
       response = "quit";
     }
   } else {
@@ -567,12 +567,13 @@ gpgme_error_t edit_fnc(
   gpgme_io_write (fd, "\n", 1);
 
   if (error != GPG_ERR_NO_ERROR)
-    std::cout << error << std::endl;
+    std::cerr << error << std::endl;
 
   return error;
 }
 
 using namespace boost::archive::iterators;
+using namespace mimetic;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn webpg::webpg()
@@ -4306,6 +4307,343 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   return response;
 }
 
+MultipartMixed webpg::createMessage(
+    const Json::Value& recipients_m,
+    const Json::Value& signers,
+    int messageType, // Signed, Encrypted
+    const std::string& subject,
+    const std::string& msgBody
+) {
+  // define the MultipartMixed message envelope
+  MultipartMixed message;
+  Json::Value crypto_result;
+  std::string boundary = "webpg-";
+  bool sign = false;
+
+  // Parse the supplied recipient list
+  std::string recip_from = recipients_m["from"].asCString();
+  Json::Value to_list = recipients_m["to"];
+  Json::Value cc_list = recipients_m["cc"];
+  Json::Value bcc_list = recipients_m["bcc"];
+  Json::Value recip_keys = recipients_m["keys"];
+
+  // Add the timestamp to the envelope
+  time_t timestamp = time(NULL);
+  char timestamptext[32];
+  if (strftime(
+      timestamptext,
+      sizeof(timestamptext),
+      "%a, %d %b %Y %H:%M:%S +0000",
+      gmtime(&timestamp)
+     )) {
+    Field dateField;
+    dateField.name("Date");
+    dateField.value(timestamptext);
+    message.header().push_back(dateField);
+  }
+
+  Field mimeVersion_h;
+  mimeVersion_h.name("MIME-Version");
+  mimeVersion_h.value(WEBPG_MIME_VERSION_STRING);
+  message.header().push_back(mimeVersion_h);
+
+  Field webpgVersion_h;
+  webpgVersion_h.name("X-WebPG-Version");
+  webpgVersion_h.value(WEBPG_VERSION_STRING);
+  message.header().push_back(webpgVersion_h);
+
+  // Add the FROM, TO, CC and BCC fields to the envelope
+  message.header().from(recip_from.c_str());
+  Json::Value lrecip;
+  unsigned int nrecip;
+  for (nrecip = 0; nrecip < to_list.size(); nrecip++) {
+    lrecip = to_list[nrecip];
+    message.header().to().push_back((char *) lrecip.asCString());
+  }
+  for (nrecip = 0; nrecip < cc_list.size(); nrecip++) {
+    lrecip = cc_list[nrecip];
+    message.header().cc().push_back((char *) lrecip.asCString());
+  }
+  message.header().subject(subject.c_str());
+
+  Attachment* att;
+
+  if (messageType == WEBPG_PGPMIME_SIGNED) {
+    // Create the pgp-signature ContentType and protocol
+    message.header().contentType("multipart/signed");
+    message.header().contentType().param("micalg", "pgp-sha1");
+    message.header().contentType().param("protocol",
+      "application/pgp-signature");
+
+    message.body()
+      .preamble("This is an OpenPGP/MIME signed message (RFC 4880 and 3156)");
+
+    // create the plain object.
+    MimeEntity* plain;
+    plain = new MimeEntity();
+
+    // Create the relevent headers for the plain MimeEntity
+    plain->header().contentType().set("text/html; charset=ISO-8859-1");
+    plain->header().contentTransferEncoding("quoted-printable");
+
+    std::string msgBodyWH;
+
+    plain->body().assign(msgBody.c_str());
+    plain->body().push_back(NEWLINE);
+    plain->body().push_back(NEWLINE);
+    QP::Encoder qp;
+    plain->body().code(qp);
+
+    // Push the plain MimeEntity into the MimeMultipart message
+    message.body().parts().push_back(plain);
+
+    msgBodyWH = "Content-Type: ";
+    msgBodyWH += plain->header().contentType().str();
+    msgBodyWH += "\r\nContent-Transfer-Encoding: ";
+    msgBodyWH += plain->header().contentTransferEncoding().str();
+    msgBodyWH += "\r\n\r\n";
+    msgBodyWH += plain->body();
+
+    crypto_result = webpg::gpgSignText(msgBodyWH,
+                                       signers,
+                                       1);
+
+    if (crypto_result["error"] == true) {
+        // If there was an error, change the TO address so we can detect the
+        //  error when returning the message.
+        message.header().to("webpg-mime-runtime-error@webpg.org");
+        // Set the message subject to the error string.
+        message.header().subject(crypto_result["error_string"].asCString());
+    }
+
+    att = new Attachment("signature.asc",
+                         ContentType("application","pgp-signature")
+    );
+    att->header().contentDescription("OpenPGP digital signature");
+    att->header().contentTransferEncoding("quoted-printable");
+    att->header().contentDisposition("inline; filename=\"signature.asc\"");
+    att->body().assign(crypto_result["data"].asString());
+
+  } else {
+
+    if (signers.size() > 0)
+        sign = true;
+
+    crypto_result = gpgEncrypt(msgBody,
+                               recip_keys,
+                               sign,
+                               signers);
+
+    if (crypto_result["error"] == true) {
+        // If there was an error, change the TO address so we can detect the
+        //  error when returning the message.
+        message.header().to("webpg-mime-runtime-error@webpg.org");
+        // Set the message subject to the error string.
+        message.header().subject(crypto_result["error_string"].asCString());
+    }
+
+    // Assign the pgp-encrypted ContentType and protocol
+    message.header().contentType("multipart/encrypted");
+    message
+      .header()
+        .contentType()
+          .param("protocol", "application/pgp-encrytped");
+
+    // Set the body preamble
+    message
+      .body()
+        .preamble("This is an OpenPGP/MIME encrypted message (RFC 4880 and 3156)");
+
+    // Add the PGP Mime Version information
+    MimeEntity* pgpMimeVersion = new MimeEntity();
+
+    // Create the relevent headers for the PGP Mime Version MimeEntity
+    pgpMimeVersion->header().contentType().set("application/pgp-encrypted");
+    pgpMimeVersion->header().contentDescription("PGP/MIME version identification");
+    pgpMimeVersion->header().contentDisposition("inline; filename=\"version.asc\"");
+    pgpMimeVersion->body().assign("Version: 1");
+    pgpMimeVersion->body().push_back(NEWLINE);
+
+    message.body().parts().push_back(pgpMimeVersion);
+
+    att = new Attachment("encrypted.asc",
+                    ContentType("application","octet-stream")
+    );
+    att->header().contentDescription("OpenPGP encrypted message");
+    att->header().contentTransferEncoding("quoted-printable");
+    att->header().contentDisposition("inline; filename=\"encrypted.asc\"");
+    att->body().assign(crypto_result["data"].asString());
+    att->body().push_back(NEWLINE);
+  }
+
+  char buf[16];
+  snprintf(buf, 16, "%lu", time(NULL));
+  boundary += buf;
+  message.header().contentType().param("boundary", boundary);
+
+  // Push the attachment into the MimeMultipart message
+  message.body().parts().push_back(att);
+
+  return message;
+}
+
+static size_t readcb(void *ptr, size_t size, size_t nmemb, void *stream) {
+  readarg_t *rarg = (readarg_t *)stream;
+  unsigned int len = rarg->body_size - rarg->body_pos;
+  if (len > size * nmemb)
+    len = size * nmemb;
+  memcpy(ptr, rarg->data + rarg->body_pos, len);
+  rarg->body_pos += len;
+  printf("readcb: %d bytes\n", len);
+  return len;
+}
+
+Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
+  Json::Value response;
+  std::string host_url = msgInfo["host_url"].asString();
+  std::string username = msgInfo["username"].asString();
+  std::string bearer = msgInfo["bearer"].asString();
+  Json::Value recipients_m = msgInfo["recipients"];
+  std::string recip_from = recipients_m["from"].asString();
+  Json::Value to_list = recipients_m["to"].asString();
+  Json::Value cc_list = recipients_m["cc"].asString();
+  Json::Value bcc_list = recipients_m["bcc"].asString();
+  Json::Value signers = msgInfo["signers"].asString();
+  std::string subject = msgInfo["subject"].asString();
+  std::string msgBody = msgInfo["message"].asString();
+
+  int msgType = msgInfo["messagetype"].asInt();
+
+  // Do some error checking
+  // FIXME: Redundant and lots of returns
+  if (host_url.length() < 1) {
+    response["error"] = true;
+    response["result"] = "Parameter \"host_url\" required. Aborting";
+    return response;
+  }
+  if (username.length() < 1) {
+    response["error"] = true;
+    response["result"] = "Parameter \"username\" required. Aborting";
+    return response;
+  }
+  if (bearer.length() < 1) {
+    response["error"] = true;
+    response["result"] = "Parameter \"bearer\" required. Aborting";
+    return response;
+  }
+  if (recip_from.length() < 1) {
+    response["error"] = true;
+    response["result"] = "Parameter \"recipients\" must have \"from\" field. Aborting";
+    return response;
+  }
+  if (to_list.size() < 1) {
+    response["error"] = true;
+    response["result"] = "Parameter \"recipients\" must have \"to\" list with at least one address. Aborting";
+    return response;
+  }
+
+  MultipartMixed me =
+    createMessage(recipients_m,
+    signers,
+    msgType,
+    subject,
+    msgBody
+  );
+
+  // Check if the recipient of this message is the runtime error address,
+  //  which indicates that something went wrong.
+  if (me.header().to().str() == "webpg-mime-runtime-error@webpg.org") {
+    response["error"] = true;
+    response["result"] = me.header().subject();
+    return response;
+  }
+
+  std::stringstream buffer;
+  buffer << me << std::endl;
+  std::string buffern = buffer.str();
+
+  readarg_t rarg;
+  rarg.data = (char *) buffern.c_str();
+  rarg.body_size = buffern.size();
+  rarg.body_pos = 0;
+
+  CURL *curl;
+  CURLcode res;
+  struct curl_slist *recipients = NULL;
+
+  curl = curl_easy_init();
+  if (curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, (char *) host_url.c_str());
+
+    curl_easy_setopt(curl, CURLOPT_USE_SSL, (long) CURLUSESSL_ALL);
+    // FIXME: Workaround for issues with cyassl:
+    //  "SSL_connect failed with error -188: ASN no signer error to confirm failure"
+    //  There has to be a better way to resolve this issue that will work for
+    //  all WebPG target platforms and configurations.
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_USERNAME, (char *) username.c_str());
+    curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, (char *) bearer.c_str());
+
+    // Envelope reverse-path
+    curl_easy_setopt(curl, CURLOPT_MAIL_FROM, (char *) recip_from.c_str());
+
+    // Iterate through the provided recipients (TO, CC and BCC)
+    unsigned int nrecip;
+    Json::Value lrecip;
+    for (nrecip = 0; nrecip < to_list.size(); nrecip++) {
+      lrecip = to_list[nrecip];
+      recipients = curl_slist_append(recipients, (char *) lrecip.asCString());
+    }
+    for (nrecip = 0; nrecip < cc_list.size(); nrecip++) {
+      lrecip = cc_list[nrecip];
+      recipients = curl_slist_append(recipients, (char *) lrecip.asCString());
+    }
+    for (nrecip = 0; nrecip < bcc_list.size(); nrecip++) {
+      lrecip = bcc_list[nrecip];
+      recipients = curl_slist_append(recipients, (char *) lrecip.asCString());
+    }
+    curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
+
+    res = curl_easy_setopt(curl, CURLOPT_READFUNCTION, readcb);
+    if(res != CURLE_OK) {
+      response["error"] = true;
+      response["result"] = curl_easy_strerror(res);
+      return response;
+    }
+
+    res = curl_easy_setopt(curl, CURLOPT_READDATA, &rarg);
+    if(res != CURLE_OK) {
+      response["error"] = true;
+      response["result"] = curl_easy_strerror(res);
+      return response;
+    }
+
+    // debugging
+//    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+    // Send the message (including headers)
+    res = curl_easy_perform(curl);
+
+    // Check for errors
+    if(res != CURLE_OK) {
+      response["error"] = true;
+      response["result"] = curl_easy_strerror(res);
+      return response;
+    }
+
+    // free the list of recipients and clean up
+    curl_slist_free_all(recipients);
+    curl_easy_cleanup(curl);
+    response["error"] = false;
+    response["result"] = "message sent";
+  } else {
+    response["error"] = true;
+    response["result"] = "curl failed to initialized for unknown reasons";
+  }
+
+  return response;
+}
+
 
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
 // exported methods
@@ -4813,6 +5151,8 @@ int main(int argc, char* argv[]) {
         res = webpg.restoreGPGConfig();
       else if (func == "getTemporaryPath")
         res = webpg.getTemporaryPath();
+      else if (func == "sendMessage")
+        res = webpg.sendMessage(params);
       else
         res = get_error_map(__func__,
                             GPG_ERR_UNKNOWN_COMMAND,
