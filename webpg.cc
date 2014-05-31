@@ -4541,10 +4541,10 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
   std::string bearer = msgInfo["bearer"].asString();
   Json::Value recipients_m = msgInfo["recipients"];
   std::string recip_from = recipients_m["from"].asString();
-  Json::Value to_list = recipients_m["to"].asString();
-  Json::Value cc_list = recipients_m["cc"].asString();
-  Json::Value bcc_list = recipients_m["bcc"].asString();
-  Json::Value signers = msgInfo["signers"].asString();
+  Json::Value to_list = recipients_m["to"];
+  Json::Value cc_list = recipients_m["cc"];
+  Json::Value bcc_list = recipients_m["bcc"];
+  Json::Value signers = msgInfo["signers"];
   std::string subject = msgInfo["subject"].asString();
   std::string msgBody = msgInfo["message"].asString();
 
