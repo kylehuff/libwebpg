@@ -934,7 +934,7 @@ Json::Value webpg::getKeyList(
   void* APIObj=NULL,
   void(*cb_status)(
     void *self,
-    const std::string& msg
+    const char *msg
   )=NULL
 ) {
   if (cb_status != NULL)
@@ -954,11 +954,19 @@ Json::Value webpg::getKeyList(
     This method executes webpg::getKeyList with an empty string and
         secret_only=false which returns all Public Keys in the keyring.
 */
-Json::Value webpg::getPublicKeyList(const boost::optional<bool> fast=false)
-{
-  bool fastListMode = (fast==true);
+Json::Value webpg::getPublicKeyList(
+  bool fastListMode,
+  bool async,
+  STATUS_PROGRESS_CB callback
+) {
   // Retrieve the public keylist
-  return getKeyList("", false, fastListMode);
+  if (callback && async == true) {
+    s_callback = callback;
+    getKeyList("", false, fastListMode, this, &webpg::status_progress_cb);
+    return "queued";
+  } else {
+    return getKeyList("", false, fastListMode);
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2479,7 +2487,7 @@ void webpg::genkey_progress_cb(
 
 void webpg::status_progress_cb(
     void *self,
-    const std::string& msg
+    const char* msg
 ) {
   s_callback("onstatusprogress", msg);
 }
@@ -2557,7 +2565,7 @@ Json::Value webpg::getKeyListWorker(
     void* APIObj,
     void(*cb_status)(
       void *self,
-      const std::string& msg
+      const char *msg
     )
 ) {
   /* declare variables */
@@ -2741,9 +2749,9 @@ Json::Value webpg::getKeyListWorker(
     key_map["uids"] = uids_map;
     key_map["nuids"] = nuids;
 
-    if (cb_status != NULL)
-      cb_status(APIObj, writer.write(key_map));
-    else if (return_list == false && name.length() > 0)
+    if (cb_status != NULL) {
+      cb_status(APIObj, writer.write(key_map).c_str());
+    } else if (return_list == false && name.length() > 0)
       keylist_map = key_map;
     else
       keylist_map[key->subkeys->keyid] = key_map;
@@ -2753,7 +2761,7 @@ Json::Value webpg::getKeyListWorker(
 
   if (gpg_err_code (err) != GPG_ERR_EOF) {
     if (cb_status != NULL)
-      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)));
+      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)).c_str());
     else
       return get_error_map(__func__, err, __LINE__, __FILE__);
   }
@@ -2762,7 +2770,7 @@ Json::Value webpg::getKeyListWorker(
 
   if(err != GPG_ERR_NO_ERROR) {
     if (cb_status != NULL)
-      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)));
+      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)).c_str());
     else
       return get_error_map(__func__, err, __LINE__, __FILE__);
   }
@@ -2771,7 +2779,7 @@ Json::Value webpg::getKeyListWorker(
 
   if (result->truncated) {
     if (cb_status != NULL)
-      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)));
+      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)).c_str());
     else
       return get_error_map(__func__, err, __LINE__, __FILE__);
   }
@@ -4657,11 +4665,11 @@ extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getPublicKeyList_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.getPublicKeyList().toStyledString();
+extern "C" const char* getPublicKeyList_r(bool fast, bool async, STATUS_PROGRESS_CB callback) {
+  fnOutputString = webpg.getPublicKeyList(fast, async, callback).toStyledString();
 
-  if (callback)
-    callback(fnOutputString.c_str());
+  if (callback && !async)
+    callback(fnOutputString.c_str(), "onstatusprogress");
 
   return fnOutputString.c_str();
 }

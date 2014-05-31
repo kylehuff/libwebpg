@@ -57,8 +57,8 @@ typedef char* (*TYPE_webpg)(void);
 // Used for allowing caller to assign a callback method
 typedef void (*EXTERN_FNC_CB)(const char*);
 typedef void (*GENKEY_PROGRESS_CB)(const char*, const char*);
-typedef void (*STATUS_PROGRESS_CB)(const std::string&, const std::string&);
-typedef void (*STATUS_CB)(void*, const std::string&);
+typedef void (*STATUS_PROGRESS_CB)(const char*, const char*);
+typedef void (*STATUS_CB)(void*, const char*);
 typedef void (*pluginAPI)(void*);
 
 typedef struct {
@@ -150,7 +150,7 @@ class webpg {
       void* APIObj,
       void(*cb_status)(
         void *self,
-        const std::string& msg
+        const char *msg
       )
     );
 
@@ -168,7 +168,7 @@ class webpg {
       void* APIObj,
       void(*cb_status)(
         void *self,
-        const std::string& msg
+        const char *msg
       )
     );
 
@@ -200,7 +200,11 @@ class webpg {
     ///         string, and the secret_only paramter as false, which returns only
     ///         Public Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getPublicKeyList(const boost::optional<bool> fast);
+    Json::Value getPublicKeyList(
+      bool fastListMode=false,
+      bool async=false,
+      STATUS_PROGRESS_CB callback=NULL
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getPrivateKeyList()
@@ -879,9 +883,9 @@ class webpg {
       int total
     );
 
-    void status_progress_cb(
+    static void status_progress_cb(
       void *self,
-      const std::string& msg
+      const char *msg
     );
 
 //    gpgme_error_t passdefunct_cb(

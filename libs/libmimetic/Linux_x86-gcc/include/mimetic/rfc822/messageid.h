@@ -26,7 +26,7 @@ namespace mimetic
 /// On Win32 Winsock library must be initialized before using this class.
 struct MessageId: public FieldValue
 {
-    MessageId(uint32_t thread_id = 0 );
+    MessageId(uint32 thread_id = 0 );
     MessageId(const std::string&);
     std::string str() const;
     void set(const std::string&);
