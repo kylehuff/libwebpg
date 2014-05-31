@@ -37,13 +37,20 @@ typedef int ssize_t;
 #endif
 #endif
 
-#define WEBPG_VERSION_STRING "0.9"
-#define WEBPG_PGPMIME_ENCRYPTED 1
-#define WEBPG_PGPMIME_SIGNED 2
-#define WEBPG_MIME_VERSION_MAJOR 1
-#define WEBPG_MIME_VERSION_MINOR 0
-#define WEBPG_MIME_VERSION_STRING "1.0"
-#define NEWLINE '\n'
+#define WEBPG_PLUGIN_TYPE_CLI         1
+#define WEBPG_PLUGIN_TYPE_LIB         2
+#define WEBPG_PLUGIN_TYPE_NPAPI       3
+#define WEBPG_PLUGIN_TYPE_NATIVEHOST  4
+
+#define WEBPG_VERSION_MAJOR           0
+#define WEBPG_VERSION_MINOR           8
+#define WEBPG_VERSION_STRING          "0.8"
+#define WEBPG_PGPMIME_ENCRYPTED       1
+#define WEBPG_PGPMIME_SIGNED          2
+#define WEBPG_MIME_VERSION_MAJOR      1
+#define WEBPG_MIME_VERSION_MINOR      0
+#define WEBPG_MIME_VERSION_STRING     "1.0"
+#define NEWLINE                       '\n'
 
 typedef struct {
   char *data;
@@ -840,7 +847,7 @@ class webpg {
     ///
     /// @brief  Retruns the defined plugin version
     ///////////////////////////////////////////////////////////////////////////
-    std::string get_version();
+    Json::Value get_version();
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn bool openpgp_detected()

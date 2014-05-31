@@ -20,12 +20,19 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #ifdef HAVE_W32_SYSTEM
 #define __func__ __FUNCTION__
 #endif
+
 // GNUGPGHOME need only be populated and all future context init's will use
 //  the path as homedir for gpg
 std::string GNUPGHOME;
 std::string GNUPGBIN;
 std::string GPGCONFHOME;
 std::string GPGCONFBIN;
+
+#ifdef H_webpgPluginPLUGIN
+unsigned int WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NPAPI;
+#else
+unsigned int WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_CLI;
+#endif
 
 // A global holder for the current edit_fnc status
 std::string edit_status;
@@ -607,7 +614,18 @@ void webpg::init()
   Json::Value error_map(Json::objectValue);
   Json::Value response(Json::objectValue);
   Json::Value protocol_info(Json::objectValue);
+  Json::Value plugin_info(Json::objectValue);
   gpgme_engine_info_t engine_info;
+
+  plugin_info["version"] = WEBPG_VERSION_STRING;
+  plugin_info["type"] =
+        (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_CLI) ? "CLI"
+      : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_LIB) ? "LIB"
+      : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NPAPI) ? "NPAPI"
+      : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) ? "NATIVEHOST"
+      : "UNKNOWN";
+
+  response["plugin"] = plugin_info;
 
   /* Initialize the locale environment.
    * The function `gpgme_check_version` must be called before any other
@@ -688,6 +706,16 @@ void webpg::init()
   webpg_status_map = response;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+/// @fn Json::Value get_version()
+///
+/// @brief  Retruns the defined plugin version
+///////////////////////////////////////////////////////////////////////////////
+// Read-only property version
+Json::Value webpg::get_version()
+{
+  return WEBPG_VERSION_STRING;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn gpgme_ctx_t get_gpgme_ctx()
@@ -4962,14 +4990,13 @@ int main(int argc, char* argv[]) {
     std::string ret;
     std::string inp = argv[1];
     unsigned int a, c, i, t;
-    bool nativeMessaging = false;
     // Define the "res" object which is output on stdout after function
     //  invocation.
     Json::Value res;
 
     // Check if this is being called as a native messaging host from chrome
     if (inp.find("chrome-extension://") != std::string::npos) {
-      nativeMessaging = true;
+      WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NATIVEHOST;
       // Reset inp
       inp = "";
       t = 0;
@@ -5006,7 +5033,9 @@ int main(int argc, char* argv[]) {
       // Set the default value of "error" to false;
       res["error"] = false;
 
-      if (func == "get_webpg_status")
+      if (func == "get_version")
+        res = webpg.get_version();
+      else if (func == "get_webpg_status")
         res = webpg.get_webpg_status();
       else if (func == "getKeyCount")
         res = webpg.getKeyCount();
@@ -5168,9 +5197,9 @@ int main(int argc, char* argv[]) {
                             __FILE__);
     }
 
-    // if this is being called as a nativeMessaging host, we don't want
+    // if this is being called as a native-messaging host, we don't want
     //  to return a styled JSON string, as that is a waste of resources.
-    if (nativeMessaging == true) {
+    if (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) {
       Json::FastWriter writer;
 
       if (parseResult == true)
