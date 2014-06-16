@@ -706,6 +706,45 @@ void webpg::init()
   webpg_status_map = response;
 };
 
+#ifndef H_LIBWEBPG // Do not include this method when compiling the lib
+void writeOut(const Json::Value str, const bool parse=false) {
+  std::string ret;
+#ifdef H_WIN32_SYSTEM
+  _setmode(_fileno(stdin),_O_BINARY);
+#endif
+  // if this is being called as a native-messaging host, we don't want
+  //  to return a styled JSON string, as that is a waste of resources.
+  if (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) {
+    if (parse == true) {
+      Json::FastWriter writer;
+      ret = writer.write(str);
+    }
+
+    unsigned int a = ret.length();
+
+    // We need to send the 4 btyes of length information
+    std::cout << char(((a>>0) & 0xFF))
+              << char(((a>>8) & 0xFF))
+              << char(((a>>16) & 0xFF))
+              << char(((a>>24) & 0xFF));
+  } else {
+    if (parse == true)
+      ret = str.toStyledString();
+  }
+
+  std::cout << ret;
+}
+
+void nativeCallback(const char* type, const char* data)
+{
+  Json::Value ret(Json::objectValue);
+  Json::FastWriter writer;
+  ret["type"] = type;
+  ret["data"] = data;
+  writeOut(ret, true);
+}
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value get_version()
 ///
@@ -992,6 +1031,12 @@ Json::Value webpg::getPublicKeyList(
     s_callback = callback;
     getKeyList("", false, fastListMode, this, &webpg::status_progress_cb);
     return "queued";
+#ifndef H_LIBWEBPG
+  } else if (async == true) {
+      s_callback = nativeCallback;
+      getKeyList("", false, fastListMode, this, &webpg::status_progress_cb);
+      return "queued";
+#endif
   } else {
     return getKeyList("", false, fastListMode);
   }
@@ -1009,11 +1054,26 @@ Json::Value webpg::getPublicKeyList(
         secret_only=true which returns all keys in the keyring which
         the user has the corrisponding secret key.
 */
-Json::Value webpg::getPrivateKeyList(const boost::optional<bool> fast=false)
-{
-  bool fastListMode = (fast==true);
+Json::Value webpg::getPrivateKeyList(
+  bool fastListMode,
+  bool async,
+  STATUS_PROGRESS_CB callback
+) {
   // Retrieve the private keylist
-  return getKeyList("", true, fastListMode);
+  if (callback && async == true) {
+    s_callback = callback;
+    getKeyList("", true, fastListMode, this, &webpg::status_progress_cb);
+    return "queued";
+#ifndef H_LIBWEBPG
+  } else if (async == true) {
+      s_callback = nativeCallback;
+      getKeyList("", true, fastListMode, this, &webpg::status_progress_cb);
+      return "queued";
+#endif
+  } else {
+    // Retrieve the private keylist
+    return getKeyList("", true, fastListMode);
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1589,12 +1649,23 @@ Json::Value webpg::gpgGetGPGConf()
 ///////////////////////////////////////////////////////////////////////////////
 Json::Value webpg::getTemporaryPath()
 {
-  char *gnupghome_envvar = getenv("TEMP");
-  if (gnupghome_envvar != NULL) {
-    return gnupghome_envvar;
-  } else {
-    return "";
-  }
+  Json::Value res;
+  char *temp_envvar = getenv("TMP");
+  if (temp_envvar != NULL)
+    res = temp_envvar;
+  temp_envvar = getenv("TEMP");
+  if (temp_envvar != NULL)
+    res = temp_envvar;
+  temp_envvar = getenv("TMPDIR");
+  if (temp_envvar != NULL)
+    res = temp_envvar;
+#ifdef HAVE_W32_SYSTEM
+  res = "";
+#else
+  if (res.empty())
+    res = "/tmp";
+#endif
+  return res;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2814,8 +2885,10 @@ Json::Value webpg::getKeyListWorker(
 
   gpgme_release (ctx);
 
-  if (cb_status != NULL)
+  if (cb_status != NULL) {
     cb_status(APIObj, "{\"status\": \"complete\"}");
+    return "";
+  }
 
   return keylist_map;
 }
@@ -4348,11 +4421,21 @@ MultipartMixed webpg::createMessage(
     const Json::Value& signers,
     int messageType, // Signed, Encrypted
     const std::string& subject,
-    const std::string& msgBody
+    const std::string& msgBody,
+    const boost::optional<std::string>& mimeType
 ) {
   // define the MultipartMixed message envelope
   MultipartMixed message;
   Json::Value crypto_result;
+  std::string mimeTypeValue;
+  // Check if mimeType was provided
+  if (mimeType)
+    mimeTypeValue = *mimeType;
+  else
+    mimeTypeValue = "text/plain";
+
+  mimeTypeValue += "; charset=ISO-8859-1";
+
   std::string boundary = "webpg-";
   bool sign = false;
 
@@ -4419,7 +4502,7 @@ MultipartMixed webpg::createMessage(
     plain = new MimeEntity();
 
     // Create the relevent headers for the plain MimeEntity
-    plain->header().contentType().set("text/html; charset=ISO-8859-1");
+    plain->header().contentType().set(mimeTypeValue.c_str());
     plain->header().contentTransferEncoding("quoted-printable");
 
     std::string msgBodyWH;
@@ -4456,7 +4539,7 @@ MultipartMixed webpg::createMessage(
                          ContentType("application","pgp-signature")
     );
     att->header().contentDescription("OpenPGP digital signature");
-    att->header().contentTransferEncoding("quoted-printable");
+    att->header().contentTransferEncoding("7bit");
     att->header().contentDisposition("inline; filename=\"signature.asc\"");
     att->body().assign(crypto_result["data"].asString());
 
@@ -4535,7 +4618,7 @@ static size_t readcb(void *ptr, size_t size, size_t nmemb, void *stream) {
 }
 
 Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
-  Json::Value response;
+  Json::Value response(Json::objectValue);
   std::string host_url = msgInfo["host_url"].asString();
   std::string username = msgInfo["username"].asString();
   std::string bearer = msgInfo["bearer"].asString();
@@ -4547,6 +4630,9 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
   Json::Value signers = msgInfo["signers"];
   std::string subject = msgInfo["subject"].asString();
   std::string msgBody = msgInfo["message"].asString();
+
+  std::string mimeType = (msgInfo.isMember("mimeType") == true) ?
+      msgInfo["mimeType"].asString() : "text/plain";
 
   int msgType = msgInfo["messagetype"].asInt();
 
@@ -4578,12 +4664,12 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
     return response;
   }
 
-  MultipartMixed me =
-    createMessage(recipients_m,
+  MultipartMixed me = createMessage(recipients_m,
     signers,
     msgType,
     subject,
-    msgBody
+    msgBody,
+    mimeType
   );
 
   // Check if the recipient of this message is the runtime error address,
@@ -4684,6 +4770,15 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
 // exported methods
 webpg webpg;
+extern "C" const char* webpg_version_r(EXTERN_FNC_CB callback) {
+  fnOutputString = webpg.get_version().toStyledString();
+
+  if (callback)
+    callback(fnOutputString.c_str());
+
+  return fnOutputString.c_str();
+}
+
 extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
   fnOutputString = webpg.get_webpg_status().toStyledString();
 
@@ -4694,38 +4789,46 @@ extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
 }
 
 extern "C" const char* getPublicKeyList_r(bool fast, bool async, STATUS_PROGRESS_CB callback) {
-  fnOutputString = webpg.getPublicKeyList(fast, async, callback).toStyledString();
+  Json::Value ret = webpg.getPublicKeyList(fast, async, callback);
+  Json::FastWriter writer;
+  fnOutputString = writer.write(ret);
 
-  if (callback && !async)
+  if (callback && !async) {
+    callback(fnOutputString.c_str(), "onstatusprogress");
+    return "{\"status\": \"queued\"}";
+  }
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* getPrivateKeyList_r(bool fast, bool async, STATUS_PROGRESS_CB callback) {
+  Json::Value ret = webpg.getPrivateKeyList(fast, async, callback);
+  Json::FastWriter writer;
+  fnOutputString = writer.write(ret);
+
+  if (callback) {
+    callback(fnOutputString.c_str(), "onstatusprogress");
+    return "{\"status\": \"queued\"}";
+  }
+
+  return fnOutputString.c_str();
+}
+
+extern "C" const char* getNamedKey_r(const char* name, STATUS_PROGRESS_CB callback) {
+  fnOutputString = webpg.getNamedKey(name).toStyledString();
+
+  if (callback)
     callback(fnOutputString.c_str(), "onstatusprogress");
 
   return fnOutputString.c_str();
 }
 
-extern "C" const char* getPrivateKeyList_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.getPrivateKeyList().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* getNamedKey_r(const char* name, EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.getNamedKey(name).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
 extern "C" const char* getExternalKey_r(const char* name,
-                                        EXTERN_FNC_CB callback) {
+                                        STATUS_PROGRESS_CB callback) {
   fnOutputString = webpg.getExternalKey(name).toStyledString();
 
   if (callback)
-    callback(fnOutputString.c_str());
+    callback(fnOutputString.c_str(), "onstatusprogress");
 
   return fnOutputString.c_str();
 }
@@ -4987,31 +5090,35 @@ int main(int argc, char* argv[]) {
   webpg webpg;
 
   if (argv[1] != NULL) {
-    std::string ret;
     std::string inp = argv[1];
-    unsigned int a, c, i, t;
+    unsigned int len = 0;
     // Define the "res" object which is output on stdout after function
     //  invocation.
-    Json::Value res;
+    Json::Value res(Json::objectValue);
 
     // Check if this is being called as a native messaging host from chrome
     if (inp.find("chrome-extension://") != std::string::npos) {
       WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NATIVEHOST;
       // Reset inp
       inp = "";
-      t = 0;
 
-      // Sum the first 4 chars from stdin (the length of the message passed).
-      for (i = 0; i <= 3; i++) {
-        t += getchar();
-      }
-      
-      // Loop getchar to pull in the message until we reach the total
-      //  length provided.
-      for (i=0; i < t; i++) {
-        c = getchar();
-        inp += c;
-      }
+	    std::cin.read((char*) &len, sizeof(len));
+//      std::cerr << "Total length: " << len << std::endl;
+
+      char str[len];
+
+      std::cout.sync_with_stdio(false);
+      std::cin.sync_with_stdio(false);
+      // std::cin.read works, but probably faster with fread..
+//      std::cin.read(str, len);
+
+      fread(str, sizeof(char), len, stdin);
+
+      // fscanf method even faster? it fails on complicated strings
+//      std::string format = "%" + i_to_str(len) + "s";
+//      fscanf(stdin, format.c_str(), str);
+
+      inp += str;
     }
 
     // Create our objects to store the message in a usable format.
@@ -5021,17 +5128,19 @@ int main(int argc, char* argv[]) {
     // Parse the message passed on stdin as a Json::Value
     bool parseResult = _action_reader.parse(inp, input_json);
     if (parseResult == false)
-      ret = _action_reader.getFormatedErrorMessages();
+      res = _action_reader.getFormatedErrorMessages();
+//    std::cerr << "input_json: " << input_json << std::endl;
 
     // Check for the "func" member, which indicates a function is described.
     if (input_json.isMember("func") == true) {
       // Get the name of the function.
       std::string func = input_json["func"].asString();
       // Pack the parameters (if any) into the params Json::Value object.
-      Json::Value params = input_json["params"];
+      Json::Value params(Json::objectValue);
+      params = input_json["params"];
 
       // Set the default value of "error" to false;
-      res["error"] = false;
+      res["error"] = "false";
 
       if (func == "get_version")
         res = webpg.get_version();
@@ -5040,13 +5149,24 @@ int main(int argc, char* argv[]) {
       else if (func == "getKeyCount")
         res = webpg.getKeyCount();
       else if (func == "getNamedKey")
-        res = webpg.getNamedKey(params[0].asString());
+        res = webpg.getNamedKey(
+          params["name"].asString(),
+          params["fastListMode"].asBool()
+        );
       else if (func == "getPublicKeyList")
-        res = webpg.getPublicKeyList();
+        res = webpg.getPublicKeyList(
+          params["fastListMode"].asBool(),
+          params["async"].asBool()
+        );
       else if (func == "getPrivateKeyList")
-        res = webpg.getPrivateKeyList(params[0].asBool());
+        res = webpg.getPrivateKeyList(
+          params["fastListMode"].asBool(),
+          params["async"].asBool()
+        );
       else if (func == "getExternalKey")
-        res = webpg.getExternalKey(params[0].asString());
+        res = webpg.getExternalKey(
+          params["name"].asString()
+        );
       else if (func == "gpgSetPreference")
         res = webpg.gpgSetPreference(params[0].asString(),
                                      params[1].asString());
@@ -5067,22 +5187,23 @@ int main(int argc, char* argv[]) {
       else if (func == "gpgGetGPGConf")
         res = webpg.gpgGetGPGConf();
       else if (func == "gpgEncrypt")
-        res = webpg.gpgEncrypt(params[0].asString(),
-                               params[1],
-                               params[2].asBool(),
-                               params[3]);
+        res = webpg.gpgEncrypt(params["text"].asString(),
+                               params["recipients"],
+                               params["sign"].asBool(),
+                               params["signers"]);
       else if (func == "gpgSymmetricEncrypt")
-        res = webpg.gpgSymmetricEncrypt(params[0].asString(),
-                                        params[1].asBool(),
-                                        params[2]);
+        res = webpg.gpgSymmetricEncrypt(params["text"].asString(),
+                                        params["sign"].asBool(),
+                                        params["signers"]);
       else if (func == "gpgDecrypt")
         res = webpg.gpgDecrypt(params[0].asString());
       else if (func == "gpgVerify")
-        res = webpg.gpgVerify(params[0].asString(), params[1].asString());
+        res = webpg.gpgVerify(params["data"].asString(),
+                              params["plaintext"].asString());
       else if (func == "gpgSignText")
-        res = webpg.gpgSignText(params[0].asString(),
-                                params[1],
-                                params[2].asInt());
+        res = webpg.gpgSignText(params["text"].asString(),
+                                params["signers"],
+                                params["signType"].asInt());
       else if (func == "gpgSignUID")
         res = webpg.gpgSignUID(params[0].asString(),
                                params[1].asInt(),
@@ -5182,8 +5303,8 @@ int main(int argc, char* argv[]) {
       else if (func == "gpgGetPhotoInfo")
         res = webpg.gpgGetPhotoInfo(params[0].asString());
       else if (func == "setTempGPGOption")
-        res = webpg.setTempGPGOption(params[0].asString(),
-                                     params[1].asString());
+        res = webpg.setTempGPGOption(params["option"].asString(),
+                                     params["value"].asString());
       else if (func == "restoreGPGConfig")
         res = webpg.restoreGPGConfig();
       else if (func == "getTemporaryPath")
@@ -5197,27 +5318,7 @@ int main(int argc, char* argv[]) {
                             __FILE__);
     }
 
-    // if this is being called as a native-messaging host, we don't want
-    //  to return a styled JSON string, as that is a waste of resources.
-    if (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) {
-      Json::FastWriter writer;
-
-      if (parseResult == true)
-        ret = writer.write(res);
-
-      a = ret.length();
-
-      // We need to send the 4 btyes of length information
-      std::cout << char(((a>>0) & 0xFF))
-                << char(((a>>8) & 0xFF))
-                << char(((a>>16) & 0xFF))
-                << char(((a>>24) & 0xFF));
-    } else {
-      if (parseResult == true)
-        ret = res.toStyledString();
-    }
-
-    std::cout << ret;
+    writeOut(res, parseResult);
   }
 
   return 0;

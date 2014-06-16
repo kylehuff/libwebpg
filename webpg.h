@@ -220,7 +220,11 @@ class webpg {
     ///         string, and the secret_only paramter as true, which returns only
     ///         Private Keys from the keyring. 
     ///////////////////////////////////////////////////////////////////////////
-    Json::Value getPrivateKeyList(const boost::optional<bool> fast);
+    Json::Value getPrivateKeyList(
+      bool fastListMode=false,
+      bool async=false,
+      STATUS_PROGRESS_CB callback=NULL
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string get_preference(const std::string& preference)
@@ -971,7 +975,8 @@ private:
       const Json::Value& signers,
       int messageType, // Signed, Encrypted
       const std::string& subject,
-      const std::string& msgBody
+      const std::string& msgBody,
+      const boost::optional<std::string>& mimeType
   );
 
 };
