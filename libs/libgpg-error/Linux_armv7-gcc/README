@@ -1,0 +1,1 @@
+./configure --prefix=/tmp/gpgbuilds --enable-static --disable-shared CFLAGS=-fPIC

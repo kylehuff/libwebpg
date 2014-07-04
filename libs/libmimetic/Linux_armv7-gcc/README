@@ -1,0 +1,3 @@
+version: 0.9.7
+configure flags: --disable-profile --disable-debug CXXFLAGS="-fPIC -O2 -std=c++0x" CXX="g++"
+architecture: armv7l

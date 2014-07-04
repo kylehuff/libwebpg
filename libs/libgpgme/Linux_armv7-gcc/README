@@ -1,0 +1,1 @@
+./configure --prefix=/tmp/gpgbuilds --with-libgpg-error-prefix=/tmp/gpgbuilds --with-libassuan-prefix=/tmp/gpgbuilds --disable-shared --enable-static --without-gpgsm --with-gpgconf CFLAGS=-fPIC CXXFLAGS=-fPIC
