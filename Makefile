@@ -14,67 +14,75 @@ ifndef PLATFORM
     CFLAGS += -static-libgcc -arch i386 -arch x86_64 -DFB_MACOSX
   else ifeq ($(shell uname),FreeBSD)
     PLATFORM=bsd
-	  ifeq ($(LBITS),64)
-		  DISTDIR=BSD_x86_64-gcc
-	  else
-		  DISTDIR=BSD_x86-gcc
-		endif
+    ifeq ($(LBITS),64)
+      DISTDIR=BSD_x86_64-gcc
+    else
+      DISTDIR=BSD_x86-gcc
+    endif
   else ifeq ($(shell uname),NetBSD)
     PLATFORM=bsd
-	  ifeq ($(LBITS),64)
-		  DISTDIR=BSD_x86_64-gcc
-	  else
-		  DISTDIR=BSD_x86-gcc
-		endif
+    ifeq ($(LBITS),64)
+      DISTDIR=BSD_x86_64-gcc
+    else
+      DISTDIR=BSD_x86-gcc
+    endif
   else ifeq ($(shell uname),OpenBSD)
     PLATFORM=bsd
-	  ifeq ($(LBITS),64)
-		  DISTDIR=BSD_x86_64-gcc
-	  else
-		  DISTDIR=BSD_x86-gcc
-		endif
+    ifeq ($(LBITS),64)
+      DISTDIR=BSD_x86_64-gcc
+    else
+      DISTDIR=BSD_x86-gcc
+    endif
   else ifeq ($(shell uname),DragonFly)
     PLATFORM=bsd
-	  ifeq ($(LBITS),64)
-		  DISTDIR=BSD_x86_64-gcc
-	  else
-		  DISTDIR=BSD_x86-gcc
-		endif
+    ifeq ($(LBITS),64)
+      DISTDIR=BSD_x86_64-gcc
+    else
+      DISTDIR=BSD_x86-gcc
+    endif
   else ifeq ($(shell uname -o),Msys)
     PLATFORM=mingw
     BINEXT=.exe
     SOEXT=.dll
     CFLAGS += -DHAVE_W32_SYSTEM
-	  ifeq ($(TARGET_CPU),x86_64)
-		  DISTDIR=WINNT_x86_64-msvc
-	  else
-		  DISTDIR=WINNT_x86-msvc
-	  endif
+    ifeq ($(TARGET_CPU),x86_64)
+      DISTDIR=WINNT_x86_64-msvc
+    else
+      DISTDIR=WINNT_x86-msvc
+    endif
   else ifeq ($(shell uname -o),Cygwin)
     PLATFORM=cygwin
     BINEXT=.exe
     SOEXT=.dll
     CFLAGS += -DHAVE_W32_SYSTEM
-	  ifeq ($(TARGET_CPU),x86_64)
-		  DISTDIR=WINNT_x86_64-msvc
-	  else
-		  DISTDIR=WINNT_x86-msvc
-		endif
+    ifeq ($(TARGET_CPU),x86_64)
+      DISTDIR=WINNT_x86_64-msvc
+    else
+      DISTDIR=WINNT_x86-msvc
+    endif
   else ifeq ($(shell uname -o),GNU/Linux)
     PLATFORM=linux
     PLDFLAGS = -ldl -lrt
-	  ifeq ($(LBITS),64)
-		  DISTDIR=Linux_x86_64-gcc
-	  else
-		  DISTDIR=Linux_x86-gcc
-		endif
+    ifeq ($(LBITS),64)
+      DISTDIR=Linux_x86_64-gcc
+    else
+      DISTDIR=Linux_x86-gcc
+    endif
+    ifeq ($(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP 'arm'),arm)
+      DISTDIR=Linux_armv$(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP '[\d]')-gcc
+      PLDFLAGS += -lm
+    endif
   else
     PLATFORM=unix
-	  ifeq ($(LBITS),64)
-		  DISTDIR=Linux_x86_64-gcc
-	  else
-		  DISTDIR=Linux_x86-gcc
-		endif
+    ifeq ($(LBITS),64)
+      DISTDIR=Linux_x86_64-gcc
+    else
+      DISTDIR=Linux_x86-gcc
+    endif
+    ifeq ($(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP 'arm'),arm)
+      DISTDIR=Linux_armv$(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP '[\d]')-gcc
+      PLDFLAGS += -lm
+    endif
   endif
 endif
 
@@ -100,9 +108,7 @@ ifeq ($(PLATFORM),mingw)
     LDFLAGS += -lwsock32 -lgdi32
 endif
 
-ifeq ($(LBITS),64)
-  CFLAGS += -fPIC
-endif
+CFLAGS += -fPIC
 
 webpg : webpg.cc
 	@set -e; echo ${PLATFORM}; if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
