@@ -556,7 +556,8 @@ gpgme_error_t edit_fnc(
       response = "";
     } else {
       std::cerr << "We should never reach this line; Line: " << __LINE__ << std::endl
-        << edit_status << std::endl;
+        << edit_status << std::endl << std::endl
+        << "'" << args << "'" << std::endl;
       response = "quit";
     }
   } else {
@@ -572,9 +573,6 @@ gpgme_error_t edit_fnc(
 
   gpgme_io_write (fd, response.c_str(), response.length());
   gpgme_io_write (fd, "\n", 1);
-
-  if (error != GPG_ERR_NO_ERROR)
-    std::cerr << error << std::endl;
 
   return error;
 }
@@ -738,7 +736,6 @@ void writeOut(const Json::Value str, const bool parse=false) {
 void nativeCallback(const char* type, const char* data)
 {
   Json::Value ret(Json::objectValue);
-  Json::FastWriter writer;
   ret["type"] = type;
   ret["data"] = data;
   writeOut(ret, true);
@@ -1170,12 +1167,12 @@ Json::Value webpg::gpgSetPreference(
   gpgme_error_t err;
   gpgme_protocol_t proto = GPGME_PROTOCOL_OpenPGP;
   err = gpgme_engine_check_version (proto);
+
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_conf_comp_t conf, comp;
-  Json::Value response;
   std::string return_code;
 
   err = gpgme_op_conf_load (ctx, &conf);
@@ -1220,6 +1217,8 @@ Json::Value webpg::gpgSetPreference(
     if (pref_value.length() && original_arg && 
       !strcmp (original_arg->value.string, arg->value.string)) {
       return "0";
+    } else if (original_arg) {
+      return_code = original_arg->value.string;
     }
 
     if (opt) {
@@ -1245,9 +1244,6 @@ Json::Value webpg::gpgSetPreference(
 
   if (ctx)
     gpgme_release (ctx);
-
-  if (!return_code.length())
-    return_code = original_arg->value.string;
 
   return return_code;
 }
@@ -1386,6 +1382,8 @@ Json::Value webpg::gpgSetGroup(
 
     if (!opt->value && group_value.length() > 1) {
       return_code = "blank";
+    } else {
+      return_code = original_arg->value.string;
     }
 
     std::string cgroup_value;
@@ -1453,9 +1451,6 @@ Json::Value webpg::gpgSetGroup(
         return get_error_map(__func__, err, __LINE__, __FILE__);
     }
   }
-
-  if (!return_code.length())
-    return_code = original_arg->value.string;
 
   return return_code;
 }
@@ -2668,7 +2663,6 @@ Json::Value webpg::getKeyListWorker(
     )
 ) {
   /* declare variables */
-  int keycount = 0;
   bool return_list = false;
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_error_t err;
@@ -2708,8 +2702,7 @@ Json::Value webpg::getKeyListWorker(
   }
 
   if (EXTERNAL == 1) {
-    err = gpgme_set_keylist_mode (ctx, GPGME_KEYLIST_MODE_EXTERN
-                                       | GPGME_KEYLIST_MODE_SIGS);
+    err = gpgme_set_keylist_mode (ctx, GPGME_KEYLIST_MODE_EXTERN);
     EXTERNAL = 0;
     return_list = true;
   }
@@ -2724,7 +2717,6 @@ Json::Value webpg::getKeyListWorker(
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
   while (!(err = gpgme_op_keylist_next (ctx, &key))) {
-    keycount++;
     /*declare nuids (Number of UIDs) 
         and nsig (Number of signatures)
         and nsub (Number of Subkeys)*/
@@ -3125,10 +3117,19 @@ std::string webpg::gpgGenKey(
   params.passphrase = passphrase;
 
   if (callback) {
+#ifndef H_LIBWEBPG
+    g_callback = nativeCallback;
+#else
     g_callback = callback;
+#endif
     webpg::gpgGenKeyWorker(params, this, &webpg::genkey_progress_cb);
   } else {
+#ifndef H_LIBWEBPG
+    g_callback = nativeCallback;
+    webpg::gpgGenKeyWorker(params, this, &webpg::genkey_progress_cb);
+#else
     webpg::gpgGenKeyWorker(params, this, NULL);
+#endif
   }
 
   return "queued";
@@ -3176,10 +3177,19 @@ std::string webpg::gpgGenSubKey(
   params.auth_flag = auth_flag;
 
   if (callback != NULL) {
+#ifndef H_LIBWEBPG
+    g_callback = nativeCallback;
+#else
     g_callback = callback;
+#endif
     webpg::gpgGenSubKeyWorker(params, this, &webpg::genkey_progress_cb);
   } else {
+#ifndef H_LIBWEBPG
+    g_callback = nativeCallback;
+    webpg::gpgGenSubKeyWorker(params, this, &webpg::genkey_progress_cb);
+#else
     webpg::gpgGenSubKeyWorker(params, this, NULL);
+#endif
   }
 
   return "queued";
@@ -3262,8 +3272,8 @@ Json::Value webpg::gpgImportExternalKey(const std::string& keyid)
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_error_t err;
   gpgme_import_result_t result;
-  gpgme_key_t extern_key;
-  gpgme_key_t key_array[2];
+  gpgme_key_t extern_key,
+              key_array[2];
 
   err = gpgme_set_keylist_mode(ctx, GPGME_KEYLIST_MODE_EXTERN);
 
@@ -3277,6 +3287,8 @@ Json::Value webpg::gpgImportExternalKey(const std::string& keyid)
 
   key_array[0] = extern_key;
   key_array[1] = NULL;
+
+  std::cerr << extern_key->subkeys->keyid << std::endl;
 
   err = gpgme_op_import_keys (ctx, key_array);
 
@@ -3306,6 +3318,7 @@ Json::Value webpg::gpgImportExternalKey(const std::string& keyid)
   for (nimport=0, import=result->imports; import; import = import->next,
        nimport++) {
     Json::Value import_item_map;
+    std::cerr <<  gpgme_strerror(import->result) << std::endl;
     import_item_map["fingerprint"] = nonnull (import->fpr);
     import_item_map["result"] = gpgme_strerror(import->result);
     import_item_map["status"] = import->status;
@@ -3797,10 +3810,47 @@ Json::Value webpg::gpgExportPublicKey(const std::string& keyid)
 
   gpgme_release (ctx);
 
+#ifndef H_LIBWEBPG
+  int c = 1;
+  unsigned int buf_len = out_buf.length();
+  float max_len = 500000.0;
+  int chunks = ceil(buf_len/max_len);
+  chunks = chunks == 0 ? 1 : chunks;
+  Json::FastWriter writer;
+  std::string ret;
+  Json::Value chunklist(Json::arrayValue);
+  chunklist[1] = chunks;
+  std::cerr << chunks << std::endl;
+  if (chunks > 1) {
+    Json::Value chunked_response;
+    chunked_response["error"] = false;
+    unsigned int start, end;
+    while (c < chunks + 1) {
+      chunklist[0] = c;
+      start = max_len * (c-1);
+      end = max_len * c;
+      if (end > buf_len)
+        end = buf_len;
+      chunked_response["chunk"] = chunklist;
+      chunked_response["result"] = out_buf.substr(start, end);
+      c++;
+      ret = writer.write(chunked_response);
+      chunked_response.clear();
+      nativeCallback("export-progress", ret.c_str());
+    }
+  } else {
+    chunklist[0] = 1;
+    response["chunk"] = chunklist;
+    response["result"] = out_buf;
+    ret = writer.write(response);
+    nativeCallback("export-progress", ret.c_str());
+  }
+  return "complete";
+#else
   response["error"] = false;
   response["result"] = out_buf;
-
   return response;
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -5112,13 +5162,14 @@ int main(int argc, char* argv[]) {
       // std::cin.read works, but probably faster with fread..
 //      std::cin.read(str, len);
 
-      fread(str, sizeof(char), len, stdin);
+      size_t res = fread(str, sizeof(char), len, stdin);
 
       // fscanf method even faster? it fails on complicated strings
 //      std::string format = "%" + i_to_str(len) + "s";
 //      fscanf(stdin, format.c_str(), str);
 
-      inp += str;
+      if (res)
+        inp += str;
     }
 
     // Create our objects to store the message in a usable format.
@@ -5261,14 +5312,14 @@ int main(int argc, char* argv[]) {
                               params[2].asString(),
                               params[3].asString());
       else if (func == "gpgDeleteUID")
-        res = webpg.gpgDeleteUID(params[0].asString(), params[0].asInt());
+        res = webpg.gpgDeleteUID(params[0].asString(), params[1].asInt());
       else if (func == "gpgSetPrimaryUID")
         res = webpg.gpgSetPrimaryUID(params[0].asString(),
                                      params[1].asInt());
       else if (func == "gpgSetSubkeyExpire")
         res = webpg.gpgSetSubkeyExpire(params[0].asString(),
                                        params[1].asInt(),
-                                       params.asInt());
+                                       params[2].asInt());
       else if (func == "gpgSetPubkeyExpire")
         res = webpg.gpgSetPubkeyExpire(params[0].asString(),
                                        params[1].asInt());
