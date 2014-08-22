@@ -243,7 +243,7 @@ class Decoder: public buffered_codec, public chainable_codec<Encoder>
         sNewline,
         sOtherChar
     };
-    size_t m_pos, m_maxlen;
+    size_t m_maxlen;
 
 
     int m_state, m_nl;
