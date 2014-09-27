@@ -62,7 +62,7 @@ ifndef PLATFORM
     endif
   else ifeq ($(shell uname -o),GNU/Linux)
     PLATFORM=linux
-    PLDFLAGS = -ldl -lrt
+    PLDFLAGS = -ldl -lrt -lm
     ifeq ($(LBITS),64)
       DISTDIR=Linux_x86_64-gcc
     else
@@ -70,7 +70,6 @@ ifndef PLATFORM
     endif
     ifeq ($(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP 'arm'),arm)
       DISTDIR=Linux_armv$(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP '[\d]')-gcc
-      PLDFLAGS += -lm
     endif
   else
     PLATFORM=unix
@@ -110,14 +109,18 @@ endif
 
 CFLAGS += -fPIC
 
-webpg : webpg.cc
+all : bin lib
+
+bin:
 	@set -e; echo ${PLATFORM}; if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
+	$(CC) $(CFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
+
+lib:
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(CC) $(CFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
 	$(CC) $(CFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
 
 clean:
