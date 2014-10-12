@@ -5141,13 +5141,20 @@ int main(int argc, char* argv[]) {
 
   if (argv[1] != NULL) {
     std::string inp = argv[1];
+    bool nativeHost = false;
+    for (int i=1; i < argc; i++) {
+        if (string(argv[i]).find("chrome-extension://") != std::string::npos) {
+            nativeHost = true;
+            break;
+        }
+    }
     unsigned int len = 0;
     // Define the "res" object which is output on stdout after function
     //  invocation.
     Json::Value res(Json::objectValue);
 
     // Check if this is being called as a native messaging host from chrome
-    if (inp.find("chrome-extension://") != std::string::npos) {
+    if (nativeHost == true) {
       WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NATIVEHOST;
       // Reset inp
       inp = "";
