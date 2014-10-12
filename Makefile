@@ -94,7 +94,8 @@ LDFLAGS:="$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a" \
   "$(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a" \
   "$(PROJECT_ROOT)/libs/libmimetic/$(DISTDIR)/libmimetic.a" \
   "$(PROJECT_ROOT)/libs/libcurl/$(DISTDIR)/libcurl.a" \
-  -DDEBUG -lstdc++ $(PLDFLAGS)
+  $(shell g++ -print-file-name=libstdc++.a) \
+  -DDEBUG $(PLDFLAGS)
 
 CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
   -I "$(PROJECT_ROOT)/libs/libgpgme/${DISTDIR}/include" \
@@ -104,10 +105,10 @@ CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
   -D "_FILE_OFFSET_BITS=64" -g -Wall -O2
 
 ifeq ($(PLATFORM),mingw)
-    LDFLAGS += -lwsock32 -lgdi32
+    LDFLAGS += -lwsock32 -lgdi32 -lws2_32
 endif
 
-CFLAGS += -fPIC
+CFLAGS += -fPIC -DCURL_STATICLIB
 
 all : bin lib
 
