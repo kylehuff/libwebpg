@@ -658,18 +658,19 @@ void webpg::init()
 
   engine_info = gpgme_ctx_get_engine_info (ctx);
 
-  while (engine_info) {
-    if (engine_info->file_name)
-      protocol_info["file_name"] = (char *) engine_info->file_name;
-    if (engine_info->version)
-      protocol_info["version"] = (char *) engine_info->version;
-    if (engine_info->home_dir)
-      protocol_info["home_dir"] = (char *) engine_info->home_dir;
-    if (engine_info->req_version)
-      protocol_info["req_version"] = (char *) engine_info->req_version;
+  if (err == GPG_ERR_NO_ERROR) {
+    while (engine_info) {
+      if (engine_info->file_name)
+        protocol_info["file_name"] = (char *) engine_info->file_name;
+      if (engine_info->version)
+        protocol_info["version"] = (char *) engine_info->version;
+      if (engine_info->home_dir)
+        protocol_info["home_dir"] = (char *) engine_info->home_dir;
+      if (engine_info->req_version)
+        protocol_info["req_version"] = (char *) engine_info->req_version;
 
-    std::string proto_name =
-          (engine_info->protocol == GPGME_PROTOCOL_OpenPGP) ? "OpenPGP"
+      std::string proto_name =
+  	(engine_info->protocol == GPGME_PROTOCOL_OpenPGP) ? "OpenPGP"
         : (engine_info->protocol == GPGME_PROTOCOL_CMS) ? "CMS"
         : (engine_info->protocol == GPGME_PROTOCOL_GPGCONF) ? "GPGCONF"
         : (engine_info->protocol == GPGME_PROTOCOL_ASSUAN) ? "Assuan"
@@ -678,10 +679,11 @@ void webpg::init()
         : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "DEFAULT"
         : "UNKNOWN";
 
-    response[proto_name] = protocol_info;
-    protocol_info.clear();
+      response[proto_name] = protocol_info;
+      protocol_info.clear();
 
-    engine_info = engine_info->next;
+      engine_info = engine_info->next;
+    }
   }
 
   response["GNUPGHOME"] = GNUPGHOME;
@@ -698,7 +700,7 @@ void webpg::init()
     response["gpg_agent_info"] = "unknown";
   }
 
-  if (ctx)
+  if (ctx && err == GPG_ERR_NO_ERROR)
     gpgme_release (ctx);
 
   webpg_status_map = response;
@@ -761,6 +763,7 @@ Json::Value webpg::get_version()
 gpgme_ctx_t webpg::get_gpgme_ctx()
 {
   gpgme_ctx_t ctx;
+  gpgme_error_t err;
   setlocale (LC_ALL, "");
   gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
 #ifdef LC_MESSAGES
@@ -769,7 +772,11 @@ gpgme_ctx_t webpg::get_gpgme_ctx()
 
   std::string gpgme_version = (char *) gpgme_check_version(NULL);
 
-  gpgme_new (&ctx);
+  err = gpgme_new (&ctx);
+
+  if (err != GPG_ERR_NO_ERROR)
+    return ctx;
+
   gpgme_engine_info_t engine_info = gpgme_ctx_get_engine_info (ctx);
 
   if (engine_info) {
