@@ -720,6 +720,11 @@ void writeOut(const Json::Value str, const bool parse=false) {
       ret = writer.write(str);
     }
 
+#ifdef HAVE_W32_SYSTEM
+    // Remove all newlines on w32
+    ret.erase(std::remove(ret.begin(), ret.end(), '\n'), ret.end());
+#endif
+
     unsigned int a = ret.length();
 
     // We need to send the 4 btyes of length information
@@ -5149,12 +5154,14 @@ int main(int argc, char* argv[]) {
   if (argv[1] != NULL) {
     std::string inp = argv[1];
     bool nativeHost = false;
+
     for (int i=1; i < argc; i++) {
         if (string(argv[i]).find("chrome-extension://") != std::string::npos) {
             nativeHost = true;
             break;
         }
     }
+
     unsigned int len = 0;
     // Define the "res" object which is output on stdout after function
     //  invocation.
