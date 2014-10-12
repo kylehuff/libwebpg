@@ -4449,7 +4449,7 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   Json::Value photos_map;
 
   for (size_t offset = out_buf.find(s); offset != std::string::npos;
-	   offset = out_buf.find(s, offset + s.length())) {
+    offset = out_buf.find(s, offset + s.length())) {
     photo_count++;
     Json::Value photo_map;
     photo_map["relative_index"] = photo_count - 1;
@@ -5159,7 +5159,7 @@ int main(int argc, char* argv[]) {
       // Reset inp
       inp = "";
 
-	    std::cin.read((char*) &len, sizeof(len));
+      std::cin.read((char*) &len, sizeof(len));
 //      std::cerr << "Total length: " << len << std::endl;
 
       char str[len];
