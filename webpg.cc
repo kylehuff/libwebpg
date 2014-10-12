@@ -709,7 +709,7 @@ void webpg::init()
 #ifndef H_LIBWEBPG // Do not include this method when compiling the lib
 void writeOut(const Json::Value str, const bool parse=false) {
   std::string ret;
-#ifdef H_WIN32_SYSTEM
+#ifdef HAVE_W32_SYSTEM
   _setmode(_fileno(stdin),_O_BINARY);
 #endif
   // if this is being called as a native-messaging host, we don't want
