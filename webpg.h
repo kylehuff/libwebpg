@@ -30,6 +30,7 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 
 #ifdef HAVE_W32_SYSTEM
 #include <windows.h>
+#include <tchar.h>
 #ifdef _WIN64
 typedef __int64 ssize_t;
 #else

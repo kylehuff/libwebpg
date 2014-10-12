@@ -1666,13 +1666,23 @@ Json::Value webpg::getTemporaryPath()
   temp_envvar = getenv("TMPDIR");
   if (temp_envvar != NULL)
     res = temp_envvar;
-#ifdef HAVE_W32_SYSTEM
-  res = "";
-#else
   if (res.empty())
+#ifdef HAVE_W32_SYSTEM
+    res = "";
+  
+  DWORD ret = 0;
+  TCHAR buffer[4096]=TEXT("");
+  
+  ret = GetLongPathName(res.asString().c_str(), buffer, 4096);
+
+  if (!ret)
+    return res; 
+  else
+    return buffer;
+#else
     res = "/tmp";
-#endif
   return res;
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
