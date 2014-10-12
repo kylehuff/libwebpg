@@ -4481,6 +4481,7 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
 
   response["photos"] = photos_map;
   response["photos_provided"] = photo_count;
+  response["photos_path"] = webpg::getTemporaryPath();
 
   gpgme_key_unref (key);
   gpgme_release (ctx);
