@@ -147,6 +147,8 @@ TESTFLAGS=' '$({ ${CXX} -static-libstdc++ tests/list.c 2>&1 | \
   }';
 })
 
+>&2 echo $TESTFLAGS
+
 # Test if the static libstdc++ file was compilied with fPIC
 TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} tests/config.cpp -o /tmp/$OUTPUTNAME ${LDFLAGS} 2>&1 | \
   awk -v ret="$TESTFLAGS" '/libstdc\+\+\.a.*?relocation/ { \
@@ -155,6 +157,8 @@ TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} tests/config.cpp -o /tmp/$OUTPUTNAME
     print ret; \
   }';
 })
+
+>&2 echo $TESTRES
 
 if [ -f /tmp/$OUTPUTNAME ]
 then
