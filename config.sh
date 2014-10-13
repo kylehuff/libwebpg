@@ -157,8 +157,9 @@ TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/list.c 2>&1 | \
 
 >&2 echo $TESTFLAGS
 
+>&2 echo ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME tests/config.cpp ${LDFLAGS}
 # Test if the static libstdc++ file was compilied with fPIC
-TESTRES=$({ ${CXX} ${OPT} ${TESTFLAGS} ${CXXFLAGS} tests/config.cpp -o /tmp/$OUTPUTNAME ${LDFLAGS} 2>&1 | \
+TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME tests/config.cpp ${LDFLAGS} 2>&1 | \
   awk -v ret="$TESTFLAGS" '/libstdc\+\+\.a.*?relocation/ { \
     ret="-lstdc++"; \
   } END { \
