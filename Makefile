@@ -3,6 +3,8 @@ PROJECT_ROOT:=$(CURDIR)
 
 LBITS := $(shell getconf LONG_BIT)
 
+GPP := $(shell which g++)
+
 BINEXT=
 SOEXT=.so
 
@@ -94,7 +96,6 @@ LDFLAGS:="$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a" \
   "$(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a" \
   "$(PROJECT_ROOT)/libs/libmimetic/$(DISTDIR)/libmimetic.a" \
   "$(PROJECT_ROOT)/libs/libcurl/$(DISTDIR)/libcurl.a" \
-  $(shell g++ -print-file-name=libstdc++.a) \
   -DDEBUG $(PLDFLAGS)
 
 CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
@@ -103,6 +104,13 @@ CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
   -I "$(PROJECT_ROOT)/libs/libmimetic/${DISTDIR}/include" \
   -I "$(PROJECT_ROOT)/libs/libcurl/${DISTDIR}/include" \
   -D "_FILE_OFFSET_BITS=64" -g -Wall -O2
+
+ifdef GPP
+  CPP := ${GPP}
+  CFLAGS += -static-libgcc -static-libstdc++
+else
+  LDFLAGS += -lstdc++
+endif
 
 ifeq ($(PLATFORM),mingw)
     LDFLAGS += -lwsock32 -lgdi32 -lws2_32
@@ -116,13 +124,13 @@ bin:
 	@set -e; echo ${PLATFORM}; if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
-	$(CC) $(CFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
+	$(CPP) $(CFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
 
 lib:
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(CC) $(CFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
+	$(CPP) $(CFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
 
 clean:
 	@set -e; echo "cleaning build directory...";
