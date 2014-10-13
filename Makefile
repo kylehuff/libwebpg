@@ -2,6 +2,7 @@ PROJECT:=webpg
 PROJECT_ROOT:=$(CURDIR)
 
 LBITS := $(shell getconf LONG_BIT)
+SHELL := sh
 
 BINEXT=
 SOEXT=.so
@@ -83,22 +84,19 @@ endif
 BINDIR=$(CURDIR)/build/bin
 LIBDIR=$(CURDIR)/build/lib
 
-CXXFLAGS := $(shell ${PROJECT_ROOT}/config.sh ${CXX} CXXFLAGS)
-LDFLAGS := $(shell ${PROJECT_ROOT}/config.sh ${CXX} LDFLAGS)
-
 all : bin lib
 
 bin:
 	@if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
-	$(CXX) $(CXXFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
+	$(CXX) $(shell ${PROJECT_ROOT}/config.sh ${CXX} CXXFLAGS STATIC) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(shell ${PROJECT_ROOT}/config.sh ${CXX} LDFLAGS STATIC)
 
 lib:
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(CXX) $(CXXFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
+	$(CXX) $(shell ${PROJECT_ROOT}/config.sh ${CXX} CXXFLAGS SHARED) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(shell ${PROJECT_ROOT}/config.sh ${CXX} LDFLAGS SHARED)
 
 clean:
 	@set -e; echo "cleaning build directory...";

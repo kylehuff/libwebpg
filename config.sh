@@ -1,6 +1,7 @@
 #!/bin/bash
 CXX=$1
 FLAGTYPE=$2
+BUILDTYPE=$3
 PROJECT=webpg
 PROJECT_ROOT=$(pwd)
 BINDIR=$PROJECT_ROOT/build/bin
@@ -136,8 +137,15 @@ CXXFLAGS+="-I $PROJECT_ROOT/libs/boost/include
   -D _FILE_OFFSET_BITS=64 -DDEBUG -DCURL_STATICLIB
   -g -Wall -O2 -fPIC -static-libgcc"
 
+if [ $BUILDTYPE == "STATIC" ]
+then
+  OPT="-static"
+else
+  OPT="-shared"
+fi
+
 # Test which is needed to statically include libstdc++
-TESTFLAGS=' '$({ ${CXX} -static-libstdc++ tests/list.c 2>&1 | \
+TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/list.c 2>&1 | \
   awk -v pat="$CXX" '$0 ~ pat { \
    if ($3 == "option" || $3 == "argument") \
      system(pat " -print-file-name=libstdc++.a"); \
@@ -150,7 +158,7 @@ TESTFLAGS=' '$({ ${CXX} -static-libstdc++ tests/list.c 2>&1 | \
 >&2 echo $TESTFLAGS
 
 # Test if the static libstdc++ file was compilied with fPIC
-TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} tests/config.cpp -o /tmp/$OUTPUTNAME ${LDFLAGS} 2>&1 | \
+TESTRES=$({ ${CXX} ${OPT} ${TESTFLAGS} ${CXXFLAGS} tests/config.cpp -o /tmp/$OUTPUTNAME ${LDFLAGS} 2>&1 | \
   awk -v ret="$TESTFLAGS" '/libstdc\+\+\.a.*?relocation/ { \
     ret="-lstdc++"; \
   } END { \
@@ -162,6 +170,7 @@ TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} tests/config.cpp -o /tmp/$OUTPUTNAME
 
 if [ -f /tmp/$OUTPUTNAME ]
 then
+  >&2 echo $(file /tmp/$OUTPUTNAME)
   rm /tmp/$OUTPUTNAME
 fi
 
