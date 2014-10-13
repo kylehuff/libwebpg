@@ -3,8 +3,6 @@ PROJECT_ROOT:=$(CURDIR)
 
 LBITS := $(shell getconf LONG_BIT)
 
-GPP := $(shell which g++)
-
 BINEXT=
 SOEXT=.so
 
@@ -13,7 +11,6 @@ ifndef PLATFORM
     PLATFORM=macosx
     DISTDIR=Darwin_x86_64-gcc
     SOEXT=.dylib
-    CFLAGS += -static-libgcc -arch i386 -arch x86_64 -DFB_MACOSX
   else ifeq ($(shell uname),FreeBSD)
     PLATFORM=bsd
     ifeq ($(LBITS),64)
@@ -46,7 +43,6 @@ ifndef PLATFORM
     PLATFORM=mingw
     BINEXT=.exe
     SOEXT=.dll
-    CFLAGS += -DHAVE_W32_SYSTEM
     ifeq ($(TARGET_CPU),x86_64)
       DISTDIR=WINNT_x86_64-msvc
     else
@@ -56,7 +52,6 @@ ifndef PLATFORM
     PLATFORM=cygwin
     BINEXT=.exe
     SOEXT=.dll
-    CFLAGS += -DHAVE_W32_SYSTEM
     ifeq ($(TARGET_CPU),x86_64)
       DISTDIR=WINNT_x86_64-msvc
     else
@@ -64,7 +59,6 @@ ifndef PLATFORM
     endif
   else ifeq ($(shell uname -o),GNU/Linux)
     PLATFORM=linux
-    PLDFLAGS = -ldl -lrt -lm
     ifeq ($(LBITS),64)
       DISTDIR=Linux_x86_64-gcc
     else
@@ -82,7 +76,6 @@ ifndef PLATFORM
     endif
     ifeq ($(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP 'arm'),arm)
       DISTDIR=Linux_armv$(shell uname -m | grep -oP 'armv[\d][\w]' | grep -oP '[\d]')-gcc
-      PLDFLAGS += -lm
     endif
   endif
 endif
@@ -90,64 +83,24 @@ endif
 BINDIR=$(CURDIR)/build/bin
 LIBDIR=$(CURDIR)/build/lib
 
-LDFLAGS:="$(PROJECT_ROOT)/libs/libgpgme/$(DISTDIR)/libgpgme.a" \
-  "$(PROJECT_ROOT)/libs/libgpg-error/$(DISTDIR)/libgpg-error.a" \
-  "$(PROJECT_ROOT)/libs/libassuan/$(DISTDIR)/libassuan.a" \
-  "$(PROJECT_ROOT)/libs/jsoncpp/$(DISTDIR)/libjsoncpp.a" \
-  "$(PROJECT_ROOT)/libs/libmimetic/$(DISTDIR)/libmimetic.a" \
-  "$(PROJECT_ROOT)/libs/libcurl/$(DISTDIR)/libcurl.a" \
-  -DDEBUG $(PLDFLAGS)
-
-CFLAGS += -I "$(PROJECT_ROOT)/libs/boost/include" \
-  -I "$(PROJECT_ROOT)/libs/libgpgme/${DISTDIR}/include" \
-  -I "$(PROJECT_ROOT)/libs/libgpg-error/${DISTDIR}/include" \
-  -I "$(PROJECT_ROOT)/libs/libmimetic/${DISTDIR}/include" \
-  -I "$(PROJECT_ROOT)/libs/libcurl/${DISTDIR}/include" \
-  -D "_FILE_OFFSET_BITS=64" -g -Wall -O2
-
-ifdef GPP
-  CPP := ${GPP}
-  CFLAGS += -static-libgcc -static-libstdc++
-else
-  LDFLAGS += -lstdc++
-endif
-
-ifeq ($(PLATFORM),mingw)
-    LDFLAGS += -lwsock32 -lgdi32 -lws2_32
-endif
-
-CFLAGS += -fPIC -DCURL_STATICLIB
+CXXFLAGS := $(shell ${PROJECT_ROOT}/config.sh ${CXX} CXXFLAGS)
+LDFLAGS := $(shell ${PROJECT_ROOT}/config.sh ${CXX} LDFLAGS)
 
 all : bin lib
 
 bin:
-	@set -e; echo ${PLATFORM}; if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
+	@if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
-	$(CPP) $(CFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(LDFLAGS)
 
 lib:
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(CPP) $(CFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(LDFLAGS)
 
 clean:
 	@set -e; echo "cleaning build directory...";
-	@set -e; for d in $(BINDIR)/*; do \
-		for f in $$d/*; do \
-			if [ -e "$$f" ]; then \
-				rm -v $$f; \
-			fi; \
-			rm -r $$d; \
-		done; \
-	done
-	@set -e; for d in $(LIBDIR)/*; do \
-		for f in $$d/*; do \
-			if [ -e "$$f" ]; then \
-				rm -v $$f; \
-			fi; \
-			rm -r $$d; \
-		done; \
-	done
+	@set -e; rm -vrf $(BINDIR);
 	@set -e; echo "done.";
