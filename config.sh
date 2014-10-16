@@ -22,7 +22,9 @@ case "$UNAME" in
     PLATFORM='macosx'
     DISTDIR='Darwin_x86_64-gcc'
     SOEXT='.dylib'
-    CXXFLAGS='-arch i386 -arch x86_64 -DFB_MACOSX'
+    CXXFLAGS='-arch i386 -arch x86_64 -DFB_MACOSX '
+    PLDFLAGS="${PROJECT_ROOT}/libs/libcurl/${DISTDIR}/libcyassl.a \
+	      ${PROJECT_ROOT}/libs/libcurl/${DISTDIR}/libz.a"
     ;;
   "FreeBSD" )
     PLATFORM='bsd'
