@@ -118,9 +118,12 @@ then
   exit $?
 fi
 
-if [ "$CXX" != "clang++" ]
+if [[ ! $CXX =~ clang ]]
 then
   STATIC_GCC="-static-libgcc"
+elif [ "$CXX" == "clang" ]
+then
+  PLDFLAGS+=" -lstdc++"
 fi
 
 LDFLAGS="$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a
