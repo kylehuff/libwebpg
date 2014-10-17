@@ -1972,7 +1972,6 @@ Json::Value webpg::gpgDecryptVerify(
   int nsig = 0, nnotations, ret;
   int tnsig = 0;
   char buf[513];
-  char *agent_info = getenv("GPG_AGENT_INFO");
 
   if (use_agent == 0) {
     // Set the GPG_AGENT_INFO to null because the user shouldn't be bothered
@@ -1985,6 +1984,7 @@ Json::Value webpg::gpgDecryptVerify(
     setTempGPGOption("passphrase", "\"\"");
 #ifndef HAVE_W32_SYSTEM
 #ifndef FB_MACOSX
+    char *agent_info = getenv("GPG_AGENT_INFO");
     // Poison the GPG_AGENT_INFO environment variable
     envvar = "GPG_AGENT_INFO=INVALID";
     putenv(strdup(envvar.c_str()));
