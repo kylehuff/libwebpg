@@ -89,7 +89,7 @@ case "$UNAME" in
     ;;
   "Linux" )
     PLATFORM='linux'
-    PLDFLAGS='-ldl -lrt -lm'
+    PLDFLAGS="$(${CXX} -print-file-name=librt.a)"
     if [ $LBITS -eq 64 ]
     then
       DISTDIR=Linux_x86_64-gcc
@@ -147,7 +147,7 @@ else
 fi
 
 # Test which is needed to statically include libstdc++
-TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/list.c 2>&1 | \
+TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/config.cpp 2>&1 | \
   awk -v pat="$CXX" '$0 ~ pat { \
    if ($3 == "option" || $3 == "argument") \
      system(pat " -print-file-name=libstdc++.a"); \
@@ -159,7 +159,7 @@ TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/list.c 2>&1 | \
 
 >&2 echo $TESTFLAGS
 
->&2 echo ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME tests/config.cpp ${LDFLAGS}
+>&2 echo ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME webpg.cc ${LDFLAGS}
 # Test if the static libstdc++ file was compilied with fPIC
 TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME tests/config.cpp ${LDFLAGS} 2>&1 | \
   awk -v ret="$TESTFLAGS" '/libstdc\+\+\.a.*?relocation/ { \
@@ -181,7 +181,7 @@ if [[ $TESTFLAGS =~ static-libstdc ]]
 then
   CXXFLAGS=$TESTRES' '$CXXFLAGS
 else
-  LDFLAGS=$LDFLAGS' '$TESTFLAGS
+  LDFLAGS=$TESTFLAGS' '$LDFLAGS
 fi
 
 if [ $FLAGTYPE == "CXXFLAGS" ]
