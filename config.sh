@@ -12,10 +12,6 @@ OUTPUTNAME=config_test_$(date +%s)
 LBITS=$(getconf LONG_BIT)
 UNAME=$(uname)
 
-get_platform() {
-    local x = 1;
-}
-
 case "$UNAME" in
   "Darwin" )
     PLATFORM='macosx'
@@ -122,6 +118,11 @@ then
   exit $?
 fi
 
+if [ "$CXX" != "clang++" ]
+then
+  STATIC_GCC="-static-libgcc"
+fi
+
 LDFLAGS="$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a
   $PROJECT_ROOT/libs/libgpg-error/$DISTDIR/libgpg-error.a
   $PROJECT_ROOT/libs/libassuan/$DISTDIR/libassuan.a
@@ -136,7 +137,7 @@ CXXFLAGS+="-I $PROJECT_ROOT/libs/boost/include
   -I $PROJECT_ROOT/libs/libmimetic/$DISTDIR/include
   -I $PROJECT_ROOT/libs/libcurl/$DISTDIR/include
   -D _FILE_OFFSET_BITS=64 -DDEBUG -DCURL_STATICLIB
-  -g -Wall -O2 -fPIC -static-libgcc"
+  -g -Wall -O2 -fPIC $STATIC_GCC"
 
 if [ $BUILDTYPE == "STATIC" ]
 then
@@ -144,6 +145,8 @@ then
 else
   OPT="-shared"
 fi
+
+>&2 echo "Generating test"
 
 # Test which is needed to statically include libstdc++
 TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/config.cpp 2>&1 | \
