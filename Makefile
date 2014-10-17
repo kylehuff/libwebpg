@@ -90,13 +90,22 @@ bin:
 	@if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
-	$(CXX) $(shell ${PROJECT_ROOT}/config.sh ${CXX} CXXFLAGS STATIC) -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc $(shell ${PROJECT_ROOT}/config.sh ${CXX} LDFLAGS STATIC)
+	$(eval FLAGS="$(shell ${PROJECT_ROOT}/config.sh ${CXX} STATIC)")
+	$(eval CXXFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[1], index(N[1], "=")+1) }'))
+	$(eval LDFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[2], index(N[2], "=")+1) }'))
+	$(CXX) ${CXXFLAGS} -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc ${LDFLAGS}
 
 lib:
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(CXX) $(shell ${PROJECT_ROOT}/config.sh ${CXX} CXXFLAGS SHARED) -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc $(shell ${PROJECT_ROOT}/config.sh ${CXX} LDFLAGS SHARED)
+	$(eval FLAGS="$(shell ${PROJECT_ROOT}/config.sh ${CXX} SHARED)")
+	$(eval CXXFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[1], index(N[1], "=")+1) }'))
+	$(eval LDFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[2], index(N[2], "=")+1) }'))
+	@set -e; echo $(CXXFLAGS);
+	@set -e; echo $(LDFLAGS);
+	@set -e; echo "";
+	$(CXX) ${CXXFLAGS} -DH_LIBWEBPG -shared -o "${LIBDIR}/${DISTDIR}/lib${PROJECT}${SOEXT}" webpg.cc ${LDFLAGS}
 
 clean:
 	@set -e; echo "cleaning build directory...";

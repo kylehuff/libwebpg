@@ -1,7 +1,6 @@
 #!/bin/bash
 CXX=$1
-FLAGTYPE=$2
-BUILDTYPE=$3
+BUILDTYPE=$2
 PROJECT=webpg
 PROJECT_ROOT=$(pwd)
 BINDIR=$PROJECT_ROOT/build/bin
@@ -89,7 +88,7 @@ case "$UNAME" in
     ;;
   "Linux" )
     PLATFORM='linux'
-    PLDFLAGS="$(${CXX} -print-file-name=librt.a)"
+    PLDFLAGS="-lrt"
     if [ $LBITS -eq 64 ]
     then
       DISTDIR=Linux_x86_64-gcc
@@ -148,8 +147,8 @@ fi
 
 # Test which is needed to statically include libstdc++
 TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/config.cpp 2>&1 | \
-  awk -v pat="$CXX" '$0 ~ pat { \
-   if ($3 == "option" || $3 == "argument") \
+  awk -v pat="$CXX" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { \
+   if ($0 ~ "option" || $0 ~ "argument") \
      system(pat " -print-file-name=libstdc++.a"); \
    else \
      print "-static-libstdc++"; \
@@ -157,23 +156,25 @@ TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/config.cpp 2>&1 | \
   }';
 })
 
->&2 echo $TESTFLAGS
+if [[ $TESTFLAGS =~ static-libstdc ]]
+then
+    TESTCOMPILE="${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME webpg.cc ${LDFLAGS}"
+else
+    TESTCOMPILE="${CXX} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME webpg.cc ${TESTFLAGS} ${LDFLAGS}"
+fi
 
->&2 echo ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME webpg.cc ${LDFLAGS}
 # Test if the static libstdc++ file was compilied with fPIC
-TESTRES=$({ ${CXX} ${TESTFLAGS} ${CXXFLAGS} -DH_LIBWEBPG ${OPT} -o /tmp/$OUTPUTNAME tests/config.cpp ${LDFLAGS} 2>&1 | \
-  awk -v ret="$TESTFLAGS" '/libstdc\+\+\.a.*?relocation/ { \
-    ret="-lstdc++"; \
+TESTRES=$({ ${TESTCOMPILE} 2>&1 | \
+    awk -v ret="$TESTFLAGS" 'BEGIN {FS="\n"; RS="";OFS="\n";} { if ($0 ~ /libstdc\+\+\.a.*?relocation/) { \
+      ret="-lstdc++"; \
+    }
   } END { \
     print ret; \
   }';
 })
 
->&2 echo $TESTRES
-
 if [ -f /tmp/$OUTPUTNAME ]
 then
-  >&2 echo $(file /tmp/$OUTPUTNAME)
   rm /tmp/$OUTPUTNAME
 fi
 
@@ -181,13 +182,7 @@ if [[ $TESTFLAGS =~ static-libstdc ]]
 then
   CXXFLAGS=$TESTRES' '$CXXFLAGS
 else
-  LDFLAGS=$TESTFLAGS' '$LDFLAGS
+  LDFLAGS=$TESTRES' '$LDFLAGS
 fi
 
-if [ $FLAGTYPE == "CXXFLAGS" ]
-then
-  echo ${CXXFLAGS}
-elif [ $FLAGTYPE == "LDFLAGS" ]
-then
-  echo  ${LDFLAGS}
-fi
+echo -e "CXXFLAGS=${CXXFLAGS},LDFLAGS=${LDFLAGS}"
