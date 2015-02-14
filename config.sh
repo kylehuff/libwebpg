@@ -137,19 +137,19 @@ then
   PLDFLAGS+=" -lstdc++"
 fi
 
-LDFLAGS="$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a
-  $PROJECT_ROOT/libs/libgpg-error/$DISTDIR/libgpg-error.a
-  $PROJECT_ROOT/libs/libassuan/$DISTDIR/libassuan.a
-  $PROJECT_ROOT/libs/jsoncpp/$DISTDIR/libjsoncpp.a
-  $PROJECT_ROOT/libs/libmimetic/$DISTDIR/libmimetic.a
-  $PROJECT_ROOT/libs/libcurl/$DISTDIR/libcurl.a
+LDFLAGS="'$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a'
+  '$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/libgpg-error.a'
+  '$PROJECT_ROOT/libs/libassuan/$DISTDIR/libassuan.a'
+  '$PROJECT_ROOT/libs/jsoncpp/$DISTDIR/libjsoncpp.a'
+  '$PROJECT_ROOT/libs/libmimetic/$DISTDIR/libmimetic.a'
+  '$PROJECT_ROOT/libs/libcurl/$DISTDIR/libcurl.a'
   $PLDFLAGS"
 
-CXXFLAGS+="-I $PROJECT_ROOT/libs/boost/include
-  -I $PROJECT_ROOT/libs/libgpgme/$DISTDIR/include
-  -I $PROJECT_ROOT/libs/libgpg-error/$DISTDIR/include
-  -I $PROJECT_ROOT/libs/libmimetic/$DISTDIR/include
-  -I $PROJECT_ROOT/libs/libcurl/$DISTDIR/include
+CXXFLAGS+=" -I '$PROJECT_ROOT/libs/boost/include'
+  -I '$PROJECT_ROOT/libs/libgpgme/$DISTDIR/include'
+  -I '$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/include'
+  -I '$PROJECT_ROOT/libs/libmimetic/$DISTDIR/include'
+  -I '$PROJECT_ROOT/libs/libcurl/$DISTDIR/include'
   -D _FILE_OFFSET_BITS=64 -DDEBUG -DCURL_STATICLIB
   -g -Wall -O2 -fPIC $STATIC_GCC"
 

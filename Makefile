@@ -94,7 +94,7 @@ bin:
 	@if [ ! -d "${BINDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${BINDIR}/${DISTDIR}"; \
 	fi
-	$(eval FLAGS="$(shell ${PROJECT_ROOT}/config.sh ${CXX} STATIC)")
+	$(eval FLAGS="$(shell '${PROJECT_ROOT}/config.sh' ${CXX} STATIC)")
 	$(eval CXXFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[1], index(N[1], "=")+1) }'))
 	$(eval LDFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[2], index(N[2], "=")+1) }'))
 	$(CXX) ${CXXFLAGS} -o "${BINDIR}/${DISTDIR}/${PROJECT}${BINEXT}" webpg.cc ${LDFLAGS}
@@ -103,7 +103,7 @@ lib:
 	@set -e; if [ ! -d "${LIBDIR}/${DISTDIR}" ]; then \
 		mkdir -vp "${LIBDIR}/${DISTDIR}"; \
 	fi
-	$(eval FLAGS="$(shell ${PROJECT_ROOT}/config.sh ${CXX} SHARED)")
+	$(eval FLAGS="$(shell '${PROJECT_ROOT}/config.sh' ${CXX} SHARED)")
 	$(eval CXXFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[1], index(N[1], "=")+1) }'))
 	$(eval LDFLAGS=$(shell echo ${FLAGS} | awk 'BEGIN {FS="\n"; RS="";OFS="\n";} END { split($$0, N, ","); print substr(N[2], index(N[2], "=")+1) }'))
 	@set -e; echo $(CXXFLAGS);
