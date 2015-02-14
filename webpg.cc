@@ -627,7 +627,7 @@ void webpg::init()
   char buf[bufsize];
 
 #ifdef HAVE_W32_SYSTEM
-  GetModuleFileName(NULL, buf, bufsize)
+  GetModuleFileName(NULL, buf, bufsize);
 #else
   readlink("/proc/self/exe", buf, bufsize);
 #endif
