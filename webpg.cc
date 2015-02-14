@@ -623,6 +623,17 @@ void webpg::init()
       : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) ? "NATIVEHOST"
       : "UNKNOWN";
 
+  size_t bufsize = 255;
+  char buf[bufsize];
+
+#ifdef HAVE_W32_SYSTEM
+  GetModuleFileName(NULL, buf, bufsize)
+#else
+  readlink("/proc/self/exe", buf, bufsize);
+#endif
+
+  plugin_info["path"] = buf;
+
   response["plugin"] = plugin_info;
 
   /* Initialize the locale environment.
