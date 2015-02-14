@@ -9,14 +9,14 @@ BINEXT=
 SOEXT=.so
 OUTPUTNAME=config_test_$(date +%s)
 
-if [ $(type getconf 2>&1 | awk -v pat="not found" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { print "NOT_FOUND" };') == "NOT_FOUND" ]
+if [ "$(type getconf 2>&1 | awk -v pat="not found" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { print "NOT_FOUND" };')" == "NOT_FOUND" ]
 then
   LBITS=$(file /bin/cp | awk -v pat="32" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { print pat };')
 else
   LBITS=$(getconf LONG_BIT)
 fi
 
-if [ $(uname | awk -v pat="MINGW" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { print pat };') == "MINGW" ]
+if [ "$(uname | awk -v pat="MINGW" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { print pat };')" == "MINGW" ]
 then
   UNAME=$(uname -o)
 else
