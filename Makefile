@@ -1,7 +1,11 @@
 PROJECT:=webpg
 PROJECT_ROOT:=$(CURDIR)
 
-LBITS := $(shell getconf LONG_BIT)
+ifeq ($(shell type getconf 2>&1 | awk -v pat="not found" 'BEGIN {FS="\n"; RS="";OFS="\n";} $$0 ~ pat { print "NOT_FOUND" };'),NOT_FOUND)
+  LBITS := $(shell file /bin/cp | awk -v pat="32" 'BEGIN {FS="\n"; RS="";OFS="\n";} $$0 ~ pat { print pat };')
+else
+  LBITS := $(shell getconf LONG_BIT)
+endif
 SHELL := sh
 
 BINEXT=
