@@ -624,7 +624,8 @@ void webpg::init()
       : "UNKNOWN";
 
   size_t bufsize = 255;
-  char buf[bufsize];
+  char *buf;
+  buf = new char[bufsize];
 
 #ifdef HAVE_W32_SYSTEM
   GetModuleFileName(NULL, buf, bufsize);
@@ -1745,13 +1746,8 @@ Json::Value webpg::gpgEncrypt(
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_error_t err;
   gpgme_data_t in, out;
-#ifdef HAVE_W32_SYSTEM
-  // FIXME: W32 doesn't like the array sized by the contents of the
-  // enc_to_keyids - for now set to 100
-  gpgme_key_t key[100];
-#else
-  gpgme_key_t key[enc_to_keyids.size()];
-#endif
+  gpgme_key_t *key;
+  key = new gpgme_key_t[enc_to_keyids.size()];
   unsigned int nrecipients;
   Json::Value recipient, recpients, response;
   gpgme_encrypt_result_t enc_result;
@@ -5203,7 +5199,8 @@ int main(int argc, char* argv[]) {
       std::cin.read((char*) &len, sizeof(len));
 //      std::cerr << "Total length: " << len << std::endl;
 
-      char str[len];
+      char *str;
+      str = new char[len];
 
       std::cout.sync_with_stdio(false);
       std::cin.sync_with_stdio(false);
