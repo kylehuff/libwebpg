@@ -23,6 +23,8 @@ else
   UNAME=$(uname)
 fi
 
+QUOTE=""
+
 case "$UNAME" in
   "Darwin" )
     PLATFORM='macosx'
@@ -69,6 +71,7 @@ case "$UNAME" in
     fi
     ;;
   "Msys" )
+    QUOTE="'"
     PLATFORM='mingw'
     BINEXT='.exe'
     SOEXT='.dll'
@@ -82,6 +85,7 @@ case "$UNAME" in
     fi
     ;;
   "Cygwin" )
+    QUOTE="'"
     PLATFORM='cygwin'
     BINEXT='.exe'
     SOEXT='.dll'
@@ -129,29 +133,33 @@ then
   exit $?
 fi
 
+>&2 echo "Generating test for ${CXX}"
 if [ -z "${CXX##clang}" ]
 then
-  STATIC_GCC="-lstdc++"
+  >&2 echo "Added flags clang"
+  STATIC_GCC="-lm -lstdc++"
 elif [ -z "${CXX##clang*}" ]
 then
+  >&2 echo "Added flags clang++"
   STATIC_GCC="-static-libgcc"
 else
+  >&2 echo "Added flags ${CXX}"
   CXXFLAGS+="-Wno-unused-local-typedefs"
 fi
 
-LDFLAGS="'$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a'
-  '$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/libgpg-error.a'
-  '$PROJECT_ROOT/libs/libassuan/$DISTDIR/libassuan.a'
-  '$PROJECT_ROOT/libs/jsoncpp/$DISTDIR/libjsoncpp.a'
-  '$PROJECT_ROOT/libs/libmimetic/$DISTDIR/libmimetic.a'
-  '$PROJECT_ROOT/libs/libcurl/$DISTDIR/libcurl.a'
+LDFLAGS="$QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a$QUOTE
+  $QUOTE$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/libgpg-error.a$QUOTE
+  $QUOTE$PROJECT_ROOT/libs/libassuan/$DISTDIR/libassuan.a$QUOTE
+  $QUOTE$PROJECT_ROOT/libs/jsoncpp/$DISTDIR/libjsoncpp.a$QUOTE
+  $QUOTE$PROJECT_ROOT/libs/libmimetic/$DISTDIR/libmimetic.a$QUOTE
+  $QUOTE$PROJECT_ROOT/libs/libcurl/$DISTDIR/libcurl.a$QUOTE
   $PLDFLAGS"
 
-CXXFLAGS+=" -I '$PROJECT_ROOT/libs/boost/include'
-  -I '$PROJECT_ROOT/libs/libgpgme/$DISTDIR/include'
-  -I '$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/include'
-  -I '$PROJECT_ROOT/libs/libmimetic/$DISTDIR/include'
-  -I '$PROJECT_ROOT/libs/libcurl/$DISTDIR/include'
+CXXFLAGS+=" -I $QUOTE$PROJECT_ROOT/libs/boost/include$QUOTE
+  -I $QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/include$QUOTE
+  -I $QUOTE$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/include$QUOTE
+  -I $QUOTE$PROJECT_ROOT/libs/libmimetic/$DISTDIR/include$QUOTE
+  -I $QUOTE$PROJECT_ROOT/libs/libcurl/$DISTDIR/include$QUOTE
   -D _FILE_OFFSET_BITS=64 -DDEBUG -DCURL_STATICLIB
   -g -Wall -O2 -fPIC $STATIC_GCC"
 
