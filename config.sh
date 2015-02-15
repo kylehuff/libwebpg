@@ -170,21 +170,23 @@ else
   OPT="-shared"
 fi
 
->&2 echo "Generating test"
-
 # Test which is needed to statically include libstdc++
-TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/config.cpp 2>&1 | \
-  awk -v pat="$CXX" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { \
-   if ($0 ~ "option" || $0 ~ "argument") \
-     system(pat " -print-file-name=libstdc++.a"); \
-   else \
+>&2 echo "${CXX} ${OPT} ${CXXFLAGS} -static-libstdc++ tests/list.c ${LDFLAGS}"
+TESTFLAGS=' '$({ ${CXX} ${OPT} ${CXXFLAGS} -static-libstdc++ tests/list.c -o /tmp/$OUTPUTNAME ${LDFLAGS} 2>&1 | \
+  awk -v pat="$CXX" -v ret="" 'BEGIN {FS="\n"; RS="";OFS="\n";} $0 ~ pat { \
+   if ($0 ~ "option" || $0 ~ "argument") {\
+     pat " -print-file-name=libstdc++.a"|getline ret; \
+     if (ret != "libstdc++.a") \
+      print ret; \
+   } else {\
      print "-static-libstdc++"; \
-     exit; \
+   }\
   }';
 })
 
 >&2 echo "    checking ${OPT} build"
->&2 echo "    $STATIC_GCC"
+>&2 echo "    GCC LINK: $STATIC_GCC"
+>&2 echo "    TESTFLAGS: $TESTFLAGS"
 
 if [[ $TESTFLAGS =~ static-libstdc ]]
 then
@@ -204,6 +206,7 @@ TESTRES=$({ ${TESTCOMPILE} 2>&1 | \
   }';
 })
 
+>&2 echo "    TESTFLAGS: $TESTFLAGS"
 >&2 echo "    TESTRES: $TESTRES"
 
 if [ -f /tmp/$OUTPUTNAME ]
