@@ -51,19 +51,19 @@ struct circular_buffer
     }
     inline void push_back(const value_type& c)
     {
-        m_pItem[m_last] = c;    
-        m_last = ++m_last % m_sz;
+        m_pItem[m_last] = c;
+        m_last = (m_last + 1) % m_sz;
         m_count += (m_count == m_sz ? 0 : 1);
     }
     inline void push_front(const value_type& c)
     {
-        m_first = (--m_first + m_sz) % m_sz;        
-        m_pItem[m_first] = c;    
+        m_first = (--m_first + m_sz) % m_sz;
+        m_pItem[m_first] = c;
         m_count += (m_count == m_sz ? 0 : 1);
     }
     inline void pop_front()
     {
-        m_first = ++m_first % m_sz;        
+        m_first = (m_first + 1) % m_sz;
         m_count--;
     }
     inline void pop_back()
@@ -93,7 +93,7 @@ struct circular_buffer
     inline bool operator!=(const std::string& r) const
     {
         return !operator==(r);
-    }    
+    }
     bool compare(size_type off, size_type n0, const std::string& r) const
     {
         const self_type& me = *this;
