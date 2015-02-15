@@ -189,11 +189,14 @@ fi
 TESTRES=$({ ${TESTCOMPILE} 2>&1 | \
     awk -v ret="$TESTFLAGS" 'BEGIN {FS="\n"; RS="";OFS="\n";} { if ($0 ~ /libstdc\+\+\.a.*?relocation/) { \
       ret="-lstdc++"; \
+      print "    TESTCOMPILE Result: " $0 > "/dev/stderr"; \
     }
   } END { \
     print ret; \
   }';
 })
+
+>&2 echo "    TESTRES: $TESTRES"
 
 if [ -f /tmp/$OUTPUTNAME ]
 then
