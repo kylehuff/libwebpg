@@ -629,7 +629,8 @@ void webpg::init()
 #ifdef HAVE_W32_SYSTEM
   GetModuleFileName(NULL, buf, bufsize);
 #else
-  readlink("/proc/self/exe", buf, bufsize);
+  ssize_t rres = readlink("/proc/self/exe", buf, bufsize);
+  (void)rres;
 #endif
 
   plugin_info["path"] = buf;
