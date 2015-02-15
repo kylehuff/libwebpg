@@ -129,12 +129,14 @@ then
   exit $?
 fi
 
-if [[ ! $CXX =~ clang ]]
+if [ -z "${CXX##clang}" ]
+then
+  STATIC_GCC="-lstdc++"
+elif [ -z "${CXX##clang*}" ]
 then
   STATIC_GCC="-static-libgcc"
-elif [ "$CXX" == "clang" ]
-then
-  PLDFLAGS+=" -lstdc++"
+else
+  CXXFLAGS+="-Wno-unused-local-typedefs"
 fi
 
 LDFLAGS="'$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a'
@@ -172,6 +174,9 @@ TESTFLAGS=' '$({ ${CXX} ${OPT} -static-libstdc++ tests/config.cpp 2>&1 | \
      exit; \
   }';
 })
+
+>&2 echo "    checking ${OPT} build"
+>&2 echo "    $STATIC_GCC"
 
 if [[ $TESTFLAGS =~ static-libstdc ]]
 then
