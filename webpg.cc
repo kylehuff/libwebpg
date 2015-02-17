@@ -5273,13 +5273,13 @@ int main(int argc, char* argv[]) {
       // std::cin.read works, but probably faster with fread..
 //      std::cin.read(str, len);
 
-      size_t res = fread(str, sizeof(char), len, stdin);
+      size_t frres = fread(str, sizeof(char), len, stdin);
 
       // fscanf method even faster? it fails on complicated strings
 //      std::string format = "%" + i_to_str(len) + "s";
 //      fscanf(stdin, format.c_str(), str);
 
-      if (res)
+      if (frres)
         inp += str;
     }
 
@@ -5300,9 +5300,6 @@ int main(int argc, char* argv[]) {
       // Pack the parameters (if any) into the params Json::Value object.
       Json::Value params(Json::objectValue);
       params = input_json["params"];
-
-      // Set the default value of "error" to false;
-      res["error"] = "false";
 
       if (func == "get_version")
         res = webpg.get_version();
