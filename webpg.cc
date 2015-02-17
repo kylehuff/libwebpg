@@ -1,4 +1,4 @@
-/**********************************************************\ 
+/**********************************************************\
 Original Author: Kyle L. Huff (kylehuff)
 
 Created:    Jan 14, 2011
@@ -368,7 +368,7 @@ gpgme_error_t edit_fnc(
     status_result = status;
 
   const char* edit_type = WEBPG_EDIT_TYPE_STRINGS[current_edit];
-  
+
   // FIXME: Make this something useful
   if (!EDIT_ACTIONS_MAP.isMember(edit_type)) {
     std::cerr << "\nError: " << edit_type << " is not in EDIT_ACTIONS_MAP"
@@ -435,7 +435,7 @@ gpgme_error_t edit_fnc(
       response = "";
     else if (!strcmp (args, "sign_uid.okay"))
       response = "y";
-    else if (!strcmp (args, "keyedit.delsig.valid") || 
+    else if (!strcmp (args, "keyedit.delsig.valid") ||
              !strcmp (args, "keyedit.delsig.invalid") ||
              !strcmp (args, "keyedit.delsig.unknown") ||
              !strcmp (args, "ask_revoke_sig.one")) {
@@ -1037,7 +1037,7 @@ Json::Value webpg::getKeyList(
 ///
 /// @brief  Calls webpg::getKeyList() without specifying a search
 ///         string, and the secret_only paramter as false, which returns only
-///         Public Keys from the keyring. 
+///         Public Keys from the keyring.
 ///////////////////////////////////////////////////////////////////////////////
 /*
     This method executes webpg::getKeyList with an empty string and
@@ -1069,7 +1069,7 @@ Json::Value webpg::getPublicKeyList(
 ///
 /// @brief  Calls webpg::getKeyList() without specifying a search
 ///         string, and the secret_only paramter as true, which returns only
-///         Private Keys from the keyring. 
+///         Private Keys from the keyring.
 ///////////////////////////////////////////////////////////////////////////////
 /*
     This method executes webpg::getKeyList with an empty string and
@@ -1103,7 +1103,7 @@ Json::Value webpg::getPrivateKeyList(
 ///
 /// @brief  Calls webpg::getKeyList() with a search string and the
 ///         secret_only paramter as false, which returns only Public Keys from
-///         the keyring. 
+///         the keyring.
 ///////////////////////////////////////////////////////////////////////////////
 /*
     This method just calls webpg::getKeyList with a name/email
@@ -1120,7 +1120,7 @@ Json::Value webpg::getNamedKey(const std::string& name,
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value getExternalKey(const std::string& name)
 ///
-/// @brief  Calls getKeyList() after setting the context to 
+/// @brief  Calls getKeyList() after setting the context to
 ///         external mode with a search string and the secret_only paramter as
 ///         false, which returns only Public Keys
 ///////////////////////////////////////////////////////////////////////////////
@@ -1183,7 +1183,7 @@ std::string webpg::get_preference(const std::string& preference)
 ///         of pref_value.
 ///
 /// @param  preference  The preference to set.
-/// @param  pref_value  The value to assign to the specified preference. 
+/// @param  pref_value  The value to assign to the specified preference.
 ///////////////////////////////////////////////////////////////////////////////
 Json::Value webpg::gpgSetPreference(
     const std::string& preference,
@@ -1237,9 +1237,9 @@ Json::Value webpg::gpgSetPreference(
       return_code = "blank";
     }
 
-    /* if the new argument and original argument are the same, return 0, 
+    /* if the new argument and original argument are the same, return 0,
         there is nothing to do. */
-    if (pref_value.length() && original_arg && 
+    if (pref_value.length() && original_arg &&
       !strcmp (original_arg->value.string, arg->value.string)) {
       return "0";
     } else if (original_arg) {
@@ -1349,7 +1349,7 @@ Json::Value webpg::gpgGetPreference(const std::string& preference)
 ///         value of <group_value>.
 ///
 /// @param  group  The group to set.
-/// @param  group_value  The value to assign to the specified group. 
+/// @param  group_value  The value to assign to the specified group.
 ///////////////////////////////////////////////////////////////////////////////
 Json::Value webpg::gpgSetGroup(
     const std::string& group,
@@ -1456,9 +1456,9 @@ Json::Value webpg::gpgSetGroup(
       }
     }
 
-    /* if the new argument and original argument are the same, return 0, 
+    /* if the new argument and original argument are the same, return 0,
         there is nothing to do. */
-    if (group_value.length() && original_arg && 
+    if (group_value.length() && original_arg &&
       !strcmp (original_arg->value.string, arg->value.string)) {
       return "0";
     }
@@ -1609,7 +1609,7 @@ Json::Value webpg::restoreGPGConfig()
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value gpgSetHomeDir(const std::string& gnupg_path)
 ///
-/// @brief  Sets the GNUPGHOME static variable to the path specified in 
+/// @brief  Sets the GNUPGHOME static variable to the path specified in
 ///         gnupg_path. This should be called prior to initializing the
 ///         gpgme context.
 ///////////////////////////////////////////////////////////////////////////////
@@ -1627,7 +1627,7 @@ Json::Value webpg::gpgGetHomeDir()
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value gpgSetBinary(const std::string& gnupg_exec)
 ///
-/// @brief  Sets the GNUPGBIN static variable to the path specified in 
+/// @brief  Sets the GNUPGBIN static variable to the path specified in
 ///         gnupg_exec. This should be called prior to initializing the
 ///         gpgme context.
 ///////////////////////////////////////////////////////////////////////////////
@@ -1646,7 +1646,7 @@ Json::Value webpg::gpgGetBinary()
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value gpgSetGPGConf(const std::string& gpgconf_exec)
 ///
-/// @brief  Sets the GPGCONF static variable to the path specified in 
+/// @brief  Sets the GPGCONF static variable to the path specified in
 ///         gpgconf_exec.
 ///////////////////////////////////////////////////////////////////////////////
 Json::Value webpg::gpgSetGPGConf(const std::string& gpgconf_exec)
@@ -1682,14 +1682,14 @@ Json::Value webpg::getTemporaryPath()
   if (res.empty())
 #ifdef HAVE_W32_SYSTEM
     res = "";
-  
+
   DWORD ret = 0;
   TCHAR buffer[4096]=TEXT("");
-  
+
   ret = GetLongPathName(res.asString().c_str(), buffer, 4096);
 
   if (!ret)
-    return res; 
+    return res;
   else
     return buffer;
 #else
@@ -1730,11 +1730,11 @@ response {
     This method passes a string to encrypt, a list of keys to encrypt to calls
         webpg.gpgEncrypt. This method returns a string of encrypted data.
 */
-/* This method accepts 3 parameters, data, enc_to_keyids 
+/* This method accepts 3 parameters, data, enc_to_keyids
     and sign [optional; default: 0:NULL:false]
     the return value is a string buffer of the result */
 Json::Value webpg::gpgEncrypt(
-    const std::string& data, 
+    const std::string& data,
     const Json::Value& enc_to_keyids,
     const boost::optional<bool>& sign,
     const boost::optional<Json::Value>& opt_signers
@@ -1756,7 +1756,7 @@ Json::Value webpg::gpgEncrypt(
   if (sign && sign == true && signers.size() > 0) {
     unsigned int nsigners;
     Json::Value signer;
-    
+
     gpgme_key_t signing_key;
     for (nsigners=0; nsigners < signers.size(); nsigners++) {
       signer = signers[nsigners];
@@ -2036,7 +2036,7 @@ Json::Value webpg::gpgDecryptVerify(
 
   decrypt_result = gpgme_op_decrypt_result (ctx);
   verify_result = gpgme_op_verify_result (ctx);
-  
+
   if (decrypt_result && decrypt_result->file_name
       && strlen(decrypt_result->file_name) > 4)
     response["filename"] = (char *) decrypt_result->file_name;
@@ -2382,7 +2382,7 @@ Json::Value webpg::gpgSignUID(
   Json::Value result;
   current_uid = i_to_str(sign_uid);
 
-  /* set the default key to the with_keyid 
+  /* set the default key to the with_keyid
       gpgSetPreference returns the original value (if any) of
       the 'default-key' configuration parameter. We will put
       this into a variable so we can restore the setting when
@@ -2448,7 +2448,7 @@ Json::Value webpg::gpgSignUID(
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value gpgEnableKey(const std::string& keyid)
 ///
-/// @brief  Sets the key specified with keyid as enabled in gpupg. 
+/// @brief  Sets the key specified with keyid as enabled in gpupg.
 ///
 /// @param  keyid    The ID of the key to enable.
 ///////////////////////////////////////////////////////////////////////////////
@@ -2490,7 +2490,7 @@ Json::Value webpg::gpgEnableKey(const std::string& keyid)
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value gpgDisableKey(const std::string& keyid)
 ///
-/// @brief  Sets the key specified with keyid as disabled in gpupg. 
+/// @brief  Sets the key specified with keyid as disabled in gpupg.
 ///
 /// @param  keyid    The ID of the key to disable.
 ///////////////////////////////////////////////////////////////////////////////
@@ -2727,7 +2727,7 @@ Json::Value webpg::getKeyListWorker(
     );
   } else {
     /* apply the keylist mode to the context
-        NOTE: The keylist mode flag GPGME_KEYLIST_MODE_SIGS 
+        NOTE: The keylist mode flag GPGME_KEYLIST_MODE_SIGS
             returns the signatures of UIDS with the key */
     gpgme_set_keylist_mode (ctx, (gpgme_get_keylist_mode (ctx)
                                 | GPGME_KEYLIST_MODE_LOCAL
@@ -2751,14 +2751,14 @@ Json::Value webpg::getKeyListWorker(
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
   while (!(err = gpgme_op_keylist_next (ctx, &key))) {
-    /*declare nuids (Number of UIDs) 
+    /*declare nuids (Number of UIDs)
         and nsig (Number of signatures)
         and nsub (Number of Subkeys)*/
     int nuids, nsig, nsub, nnotations;
     Json::Value key_map(Json::objectValue);
 
     /* if secret keys are being returned, re-retrieve the key so we get all of
-       the key informoation */ 
+       the key informoation */
     if(secret_only == true && key->subkeys && key->subkeys->keyid)
         err = gpgme_get_key (ctx, key->subkeys->keyid, &key, 0);
 
@@ -2809,7 +2809,7 @@ Json::Value webpg::getKeyListWorker(
                           subkey->can_authenticate? true : false;
         subkey_item_map["is_qualified"] = subkey->is_qualified? true : false;
         subkey_item_map["algorithm"] = subkey->pubkey_algo;
-        subkey_item_map["algorithm_name"] = 
+        subkey_item_map["algorithm_name"] =
                           nonnull(gpgme_pubkey_algo_name(subkey->pubkey_algo));
         subkey_item_map["size"] = subkey->length;
         subkey_item_map["created"] = i_to_str(subkey->timestamp);
@@ -3109,7 +3109,7 @@ Json::Value webpg::gpgGenSubKeyWorker(genSubKeyParams params,
 ///                           const std::string& name_real,
 ///                           const std::string& name_comment,
 ///                           const std::string& name_email,
-///                           const std::string& expire_date, 
+///                           const std::string& expire_date,
 ///                           const std::string& passphrase,
 ///                           GENKEY_ROGRESS_CB callback)
 ///
@@ -3177,7 +3177,7 @@ std::string webpg::gpgGenKey(
 ///                              bool sign_flag,
 ///                              bool enc_flag,
 ///                              bool auth_flag,
-///                              GENKEY_PROGRESS_CB callback) 
+///                              GENKEY_PROGRESS_CB callback)
 ///
 /// @brief  Queues a threaded gpg gensubkey operation.
 ///
@@ -4085,7 +4085,7 @@ Json::Value webpg::gpgRevokeSignature(
     int reason,
     const std::string &desc
 ) {
-  return webpg::gpgRevokeItem(keyid, "revsig", 0, uid_idx, sig_idx, reason, 
+  return webpg::gpgRevokeItem(keyid, "revsig", 0, uid_idx, sig_idx, reason,
                               desc);
 }
 
@@ -4170,7 +4170,7 @@ Json::Value webpg::gpgChangePassphrase(const std::string& keyid)
         0: UID of domain_keyid was signed by an ultimately trusted private key
         1: UID of domain_keyid was signed by an expired private key that is
             ultimately trusted
-        2: UID of domain_keyid was signed by a private key that is other than 
+        2: UID of domain_keyid was signed by a private key that is other than
             ultimately trusted
         3: UID of domain_keyid was signed by an expired private key that is
             other than ultimately trusted
@@ -4188,7 +4188,7 @@ Json::Value webpg::gpgChangePassphrase(const std::string& keyid)
             preference of "advnaced.trust_model")
     */
 int webpg::verifyDomainKey(
-    const std::string& domain, 
+    const std::string& domain,
     const std::string& domain_key_fpr,
     long uid_idx,
     const std::string& required_sig_keyid
@@ -4260,8 +4260,8 @@ int webpg::verifyDomainKey(
     gpgme_keylist_result_t result = gpgme_op_keylist_result (ctx);
 
     if (!result && result->truncated == 1)
-    return -1;
-        
+      return -1;
+
     // the UID failed the signature test, check to see if the primary UID was
     // signed by one permissible key, or a trusted key.
     if (domain_key_valid == -1) {
@@ -4465,7 +4465,6 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   gpgme_op_edit (ctx, key, edit_fnc, NULL, out);
   std::string out_buf = gpgme_data_release_and_get_mem (out, &out_size);
 
-   
   response["photos_provided"] = 0;
 
   std::string s = "uat:";
@@ -4737,7 +4736,7 @@ std::string pgpMimeToString(MimeEntity* pMe, const char* boundary = "") {
     messageString << "--"
           << pMe->header().contentType().param("boundary")
           << "\r\n";
-          parentBoundary = pMe->header().contentType().param("boundary");
+    parentBoundary = pMe->header().contentType().param("boundary");
   } else if (strlen(boundary))
     parentBoundary = boundary;
 
