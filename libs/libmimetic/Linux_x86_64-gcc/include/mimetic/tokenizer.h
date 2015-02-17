@@ -147,7 +147,7 @@ struct ContTokenizer: public ItTokenizer<typename Container::const_iterator,type
     ContTokenizer(const Container* cont, const DelimCont& delims)
     : ItTokenizer<const_iterator,value_type>(cont->begin(), cont->end())
     {
-        setDelimList(delims);
+        this->setDelimList(delims);
     }
     void setSource(const Container* cont)
     {

@@ -973,7 +973,7 @@ class webpg {
 
 private:
   // Private constructs
-  mimetic::MultipartMixed createMessage(
+  mimetic::MultipartMixed* createMessage(
       const Json::Value& recipients_m,
       const Json::Value& signers,
       int messageType, // Signed, Encrypted

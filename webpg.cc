@@ -4500,7 +4500,7 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   return response;
 }
 
-MultipartMixed webpg::createMessage(
+MultipartMixed* webpg::createMessage(
     const Json::Value& recipients_m,
     const Json::Value& signers,
     int messageType, // Signed, Encrypted
@@ -4509,7 +4509,7 @@ MultipartMixed webpg::createMessage(
     const boost::optional<std::string>& mimeType
 ) {
   // define the MultipartMixed message envelope
-  MultipartMixed message;
+  MultipartMixed* message = new MultipartMixed;
   Json::Value crypto_result;
   std::string mimeTypeValue;
   // Check if mimeType was provided
@@ -4542,43 +4542,43 @@ MultipartMixed webpg::createMessage(
     Field dateField;
     dateField.name("Date");
     dateField.value(timestamptext);
-    message.header().push_back(dateField);
+    message->header().push_back(dateField);
   }
 
   Field mimeVersion_h;
   mimeVersion_h.name("MIME-Version");
   mimeVersion_h.value(WEBPG_MIME_VERSION_STRING);
-  message.header().push_back(mimeVersion_h);
+  message->header().push_back(mimeVersion_h);
 
   Field webpgVersion_h;
   webpgVersion_h.name("X-WebPG-Version");
   webpgVersion_h.value(WEBPG_VERSION_STRING);
-  message.header().push_back(webpgVersion_h);
+  message->header().push_back(webpgVersion_h);
 
   // Add the FROM, TO, CC and BCC fields to the envelope
-  message.header().from(recip_from.c_str());
+  message->header().from(recip_from.c_str());
   Json::Value lrecip;
   unsigned int nrecip;
   for (nrecip = 0; nrecip < to_list.size(); nrecip++) {
     lrecip = to_list[nrecip];
-    message.header().to().push_back((char *) lrecip.asCString());
+    message->header().to().push_back((char *) lrecip.asCString());
   }
   for (nrecip = 0; nrecip < cc_list.size(); nrecip++) {
     lrecip = cc_list[nrecip];
-    message.header().cc().push_back((char *) lrecip.asCString());
+    message->header().cc().push_back((char *) lrecip.asCString());
   }
-  message.header().subject(subject.c_str());
+  message->header().subject(subject.c_str());
 
   Attachment* att;
 
   if (messageType == WEBPG_PGPMIME_SIGNED) {
     // Create the pgp-signature ContentType and protocol
-    message.header().contentType("multipart/signed");
-    message.header().contentType().param("micalg", "pgp-sha1");
-    message.header().contentType().param("protocol",
+    message->header().contentType("multipart/signed");
+    message->header().contentType().param("micalg", "pgp-sha1");
+    message->header().contentType().param("protocol",
       "application/pgp-signature");
 
-    message.body()
+    message->body()
       .preamble("This is an OpenPGP/MIME signed message (RFC 4880 and 3156)");
 
     // create the plain object.
@@ -4598,7 +4598,7 @@ MultipartMixed webpg::createMessage(
     plain->body().code(qp);
 
     // Push the plain MimeEntity into the MimeMultipart message
-    message.body().parts().push_back(plain);
+    message->body().parts().push_back(plain);
 
     msgBodyWH = "Content-Type: ";
     msgBodyWH += plain->header().contentType().str();
@@ -4614,9 +4614,9 @@ MultipartMixed webpg::createMessage(
     if (crypto_result["error"] == true) {
         // If there was an error, change the TO address so we can detect the
         //  error when returning the message.
-        message.header().to("webpg-mime-runtime-error@webpg.org");
+        message->header().to("webpg-mime-runtime-error@webpg.org");
         // Set the message subject to the error string.
-        message.header().subject(crypto_result["error_string"].asCString());
+        message->header().subject(crypto_result["error_string"].asCString());
     }
 
     att = new Attachment("signature.asc",
@@ -4640,21 +4640,21 @@ MultipartMixed webpg::createMessage(
     if (crypto_result["error"] == true) {
         // If there was an error, change the TO address so we can detect the
         //  error when returning the message.
-        message.header().to("webpg-mime-runtime-error@webpg.org");
+        message->header().to("webpg-mime-runtime-error@webpg.org");
         // Set the message subject to the error string.
-        message.header().subject(crypto_result["error_string"].asCString());
+        message->header().subject(crypto_result["error_string"].asCString());
     }
 
     // Assign the pgp-encrypted ContentType and protocol
-    message.header().contentType("multipart/encrypted");
+    message->header().contentType("multipart/encrypted");
     message
-      .header()
+      ->header()
         .contentType()
           .param("protocol", "application/pgp-encrytped");
 
     // Set the body preamble
     message
-      .body()
+      ->body()
         .preamble("This is an OpenPGP/MIME encrypted message (RFC 4880 and 3156)");
 
     // Add the PGP Mime Version information
@@ -4667,7 +4667,7 @@ MultipartMixed webpg::createMessage(
     pgpMimeVersion->body().assign("Version: 1");
     pgpMimeVersion->body().push_back(NEWLINE);
 
-    message.body().parts().push_back(pgpMimeVersion);
+    message->body().parts().push_back(pgpMimeVersion);
 
     att = new Attachment("encrypted.asc",
                     ContentType("application","octet-stream")
@@ -4682,10 +4682,10 @@ MultipartMixed webpg::createMessage(
   char buf[16];
   snprintf(buf, 16, "%lu", time(NULL));
   boundary += buf;
-  message.header().contentType().param("boundary", boundary);
+  message->header().contentType().param("boundary", boundary);
 
   // Push the attachment into the MimeMultipart message
-  message.body().parts().push_back(att);
+  message->body().parts().push_back(att);
 
   return message;
 }
@@ -4804,7 +4804,7 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
     return response;
   }
 
-  MultipartMixed me = createMessage(recipients_m,
+  MultipartMixed* me = createMessage(recipients_m,
     signers,
     msgType,
     subject,
@@ -4814,13 +4814,13 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
 
   // Check if the recipient of this message is the runtime error address,
   //  which indicates that something went wrong.
-  if (me.header().to().str() == "webpg-mime-runtime-error@webpg.org") {
+  if (me->header().to().str() == "webpg-mime-runtime-error@webpg.org") {
     response["error"] = true;
-    response["result"] = me.header().subject();
+    response["result"] = me->header().subject();
     return response;
   }
 
-  std::string buffern = pgpMimeToString(&me);
+  std::string buffern = pgpMimeToString(me);
   buffern.replace(buffern.length() - 2, buffern.length(), "--");
   buffern += "\r\n";
 

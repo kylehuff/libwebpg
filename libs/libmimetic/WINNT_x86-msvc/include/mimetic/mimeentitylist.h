@@ -6,9 +6,7 @@
  ***************************************************************************/
 #ifndef _MIMETIC_MIME_ENTITY_LIST_
 #define _MIMETIC_MIME_ENTITY_LIST_
-// The below is to overcome an issue with using std::list in windows.
-//  the solution is to use std::vector
-#include <vector>
+#include <list>
 #include <string>
 
 namespace mimetic
@@ -17,7 +15,7 @@ namespace mimetic
 class MimeEntity;
 
 /// List of MimeEntity classes
-typedef std::vector<MimeEntity*> MimeEntityList;
+typedef std::list<MimeEntity*> MimeEntityList;
 
 
 }

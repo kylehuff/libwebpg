@@ -140,7 +140,7 @@ struct ContTokenizer: public ItTokenizer<typename Container::const_iterator,type
     // so "cont" MUST be in scope for all following calls
     // to next(...). 
     ContTokenizer(const Container* cont)
-    : ItTokenizer<const_iterator, value_type>(cont.begin(), cont.end())
+    : ItTokenizer<const_iterator, value_type>(cont->begin(), cont->end())
     {
     }
     template<typename DelimCont>
