@@ -683,14 +683,14 @@ void webpg::init()
         protocol_info["req_version"] = (char *) engine_info->req_version;
 
       std::string proto_name =
-  	(engine_info->protocol == GPGME_PROTOCOL_OpenPGP) ? "OpenPGP"
-        : (engine_info->protocol == GPGME_PROTOCOL_CMS) ? "CMS"
-        : (engine_info->protocol == GPGME_PROTOCOL_GPGCONF) ? "GPGCONF"
-        : (engine_info->protocol == GPGME_PROTOCOL_ASSUAN) ? "Assuan"
-        : (engine_info->protocol == GPGME_PROTOCOL_G13) ? "G13"
-        : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "UISERVER"
-        : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "DEFAULT"
-        : "UNKNOWN";
+        (engine_info->protocol == GPGME_PROTOCOL_OpenPGP) ? "OpenPGP"
+          : (engine_info->protocol == GPGME_PROTOCOL_CMS) ? "CMS"
+          : (engine_info->protocol == GPGME_PROTOCOL_GPGCONF) ? "GPGCONF"
+          : (engine_info->protocol == GPGME_PROTOCOL_ASSUAN) ? "Assuan"
+          : (engine_info->protocol == GPGME_PROTOCOL_G13) ? "G13"
+          : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "UISERVER"
+          : (engine_info->protocol == GPGME_PROTOCOL_UISERVER) ? "DEFAULT"
+          : "UNKNOWN";
 
       response[proto_name] = protocol_info;
       protocol_info.clear();
@@ -4702,70 +4702,60 @@ static size_t readcb(void *ptr, size_t size, size_t nmemb, void *stream) {
   return len;
 }
 
-std::string pgpMimeToString(MimeEntity* pMe, const char* boundary = "")
-{
-    std::stringstream messageString;
-    std::string parentBoundary;
+std::string pgpMimeToString(MimeEntity* pMe, const char* boundary = "") {
+  std::stringstream messageString;
+  std::string parentBoundary;
 
-    // Output the headers
-    Header::iterator hbit, heit;
-    hbit = pMe->header().begin();
-    heit = pMe->header().end();
-    for(; hbit != heit; ++hbit)
-    {
-      messageString << hbit->name() << ": ";
+  // Output the headers
+  Header::iterator hbit, heit;
+  hbit = pMe->header().begin();
+  heit = pMe->header().end();
+  for(; hbit != heit; ++hbit) {
+    messageString << hbit->name() << ": ";
 
-        // Check if this is line needs to be wrapped (has protocol)
-        std::size_t proto_pos = hbit->value().find("; protocol");
+    // Check if this is line needs to be wrapped (has protocol)
+    std::size_t proto_pos = hbit->value().find("; protocol");
 
-        // Wrap the line
-        if (proto_pos != std::string::npos) {
-          messageString << hbit->value().substr(0, proto_pos + 2)
-            << "\r\n\t" << hbit->value().substr(proto_pos + 2)
-            << "\r\n";
-        } else {
-          messageString << hbit->value() << "\r\n";
-        }
+    // Wrap the line
+    if (proto_pos != std::string::npos) {
+      messageString << hbit->value().substr(0, proto_pos + 2)
+        << "\r\n\t" << hbit->value().substr(proto_pos + 2)
+        << "\r\n";
+    } else {
+      messageString << hbit->value() << "\r\n";
     }
+  }
 
-    messageString << "\r\n";
-    if(pMe->body().preamble().length())
-    {
-      messageString << pMe->body().preamble()
-            << "\r\n";
-    }
-    if(pMe->body().epilogue().length())
-    {
-      messageString << pMe->body().epilogue()
-            << "\r\n";
-    }
-    if(pMe->header().contentType().param("boundary").length())
-    {
-      messageString << "--"
-            << pMe->header().contentType().param("boundary")
-            << "\r\n";
-            parentBoundary = pMe->header().contentType().param("boundary");
-    } else if (strlen(boundary)) {
-      parentBoundary = boundary;
-    }
+  messageString << "\r\n";
+  if(pMe->body().preamble().length())
+    messageString << pMe->body().preamble() << "\r\n";
 
-    if(pMe->body().length())
-    {
-      messageString << pMe->body()
-            << "\r\n";
-        if(pMe->header().contentType().param("boundary").length() < 1)
-        {
-          messageString << "--" << parentBoundary << "\r\n";
-        }
-    }
+  if(pMe->body().epilogue().length())
+    messageString << pMe->body().epilogue() << "\r\n";
 
-    MimeEntityList::iterator mbit = pMe->body().parts().begin(),
-                    meit = pMe->body().parts().end();
+  if(pMe->header().contentType().param("boundary").length()) {
+    messageString << "--"
+          << pMe->header().contentType().param("boundary")
+          << "\r\n";
+          parentBoundary = pMe->header().contentType().param("boundary");
+  } else if (strlen(boundary))
+    parentBoundary = boundary;
 
-    for(;mbit!=meit;++mbit)
-        messageString << pgpMimeToString(*mbit, parentBoundary.c_str());
+  if(pMe->body().length()) {
+    messageString << pMe->body() << "\r\n";
 
-    return messageString.str();
+    if(pMe->header().contentType().param("boundary").length() < 1)
+      messageString << "--" << parentBoundary << "\r\n";
+
+  }
+
+  MimeEntityList::iterator mbit = pMe->body().parts().begin(),
+                  meit = pMe->body().parts().end();
+
+  for(;mbit!=meit;++mbit)
+    messageString << pgpMimeToString(*mbit, parentBoundary.c_str());
+
+  return messageString.str();
 }
 
 Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
