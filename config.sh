@@ -144,7 +144,7 @@ then
   STATIC_GCC="-static-libgcc"
 else
   >&2 echo "Added flags ${CXX}"
-  CXXFLAGS+="-Wno-unused-local-typedefs"
+  CXXFLAGS+=" -Wno-unused-local-typedefs"
 fi
 
 LDFLAGS="$QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a$QUOTE
