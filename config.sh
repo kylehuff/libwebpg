@@ -76,7 +76,7 @@ case "$UNAME" in
     BINEXT='.exe'
     SOEXT='.dll'
     CXXFLAGS+=' -DHAVE_W32_SYSTEM'
-    PLDFLAGS+='-lwsock32 -lgdi32 -lws2_32'
+    PLDFLAGS+='-static-libgcc -lwsock32 -lgdi32 -lws2_32'
     if [ "$TARGET_CPU" == "x86_64" ]
     then
       DISTDIR='WINNT_x86_64-msvc'
