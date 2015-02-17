@@ -968,6 +968,8 @@ class webpg {
     );
 
     Json::Value sendMessage(const Json::Value& msgInfo);
+    Json::Value quotedPrintableDecode(const std::string& msg);
+    Json::Value verifyPGPMimeMessage(const std::string& msg);
 
 private:
   // Private constructs

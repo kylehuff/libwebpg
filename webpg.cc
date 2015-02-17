@@ -4917,6 +4917,23 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
   return response;
 }
 
+Json::Value webpg::quotedPrintableDecode(const std::string& msg) {
+  QP::Decoder qp;
+
+  MimeEntity* plain;
+  plain = new MimeEntity();
+
+  plain->body().assign(msg.c_str());
+  plain->body().code(qp);
+
+  return plain->body();
+}
+
+Json::Value webpg::verifyPGPMimeMessage(const std::string& msg) {
+  std::string::const_iterator bit = msg.begin(), eit = msg.end(), it;
+  MimeEntity me(bit, eit);
+  return pgpMimeToString(&me);
+}
 
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
 // exported methods
@@ -5470,6 +5487,10 @@ int main(int argc, char* argv[]) {
         res = webpg.getTemporaryPath();
       else if (func == "sendMessage")
         res = webpg.sendMessage(params);
+      else if (func == "quotedPrintableDecode")
+        res = webpg.quotedPrintableDecode(params[0].asString());
+      else if (func == "verifyPGPMimeMessage")
+        res = webpg.verifyPGPMimeMessage(params[0].asString());
       else
         res = get_error_map(__func__,
                             GPG_ERR_UNKNOWN_COMMAND,
