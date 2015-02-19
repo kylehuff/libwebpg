@@ -4675,9 +4675,13 @@ MultipartMixed* webpg::createMessage(
     MimeEntity* pgpMimeVersion = new MimeEntity();
 
     // Create the relevent headers for the PGP Mime Version MimeEntity
-    pgpMimeVersion->header().contentType().set("application/pgp-encrypted");
-    pgpMimeVersion->header().contentDescription("PGP/MIME version identification");
-    pgpMimeVersion->header().contentDisposition("inline; filename=\"version.asc\"");
+    pgpMimeVersion->header()
+                    .contentType()
+                    .set("application/pgp-encrypted");
+    pgpMimeVersion->header()
+                    .contentDescription("PGP/MIME version identification");
+    pgpMimeVersion->header()
+                    .contentDisposition("inline; filename=\"version.asc\"");
     pgpMimeVersion->body().assign("Version: 1");
     pgpMimeVersion->body().push_back(NEWLINE);
 
