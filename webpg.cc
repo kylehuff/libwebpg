@@ -555,7 +555,8 @@ gpgme_error_t edit_fnc(
     } else if (!strcmp (args, "passphrase.enter")) {
       response = "";
     } else {
-      std::cerr << "We should never reach this line; Line: " << __LINE__ << std::endl
+      std::cerr << "We should never reach this line; Line: "
+        << __LINE__ << std::endl
         << edit_status << std::endl << std::endl
         << "'" << args << "'" << std::endl;
       response = "quit";
@@ -624,8 +625,7 @@ void webpg::init()
       : "UNKNOWN";
 
   size_t bufsize = 255;
-  char *buf;
-  buf = new char[bufsize];
+  char *buf = new char[bufsize];
 
 #ifdef HAVE_W32_SYSTEM
   GetModuleFileName(NULL, buf, bufsize);
@@ -1746,8 +1746,7 @@ Json::Value webpg::gpgEncrypt(
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_error_t err;
   gpgme_data_t in, out;
-  gpgme_key_t *key;
-  key = new gpgme_key_t[enc_to_keyids.size()];
+  gpgme_key_t *key = new gpgme_key_t[enc_to_keyids.size()];
   unsigned int nrecipients;
   Json::Value recipient, recpients, response;
   gpgme_encrypt_result_t enc_result;
@@ -2886,7 +2885,12 @@ Json::Value webpg::getKeyListWorker(
 
   if (gpg_err_code (err) != GPG_ERR_EOF) {
     if (cb_status != NULL)
-      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)).c_str());
+      cb_status(
+        APIObj,
+        writer.write(
+          get_error_map(__func__, err, __LINE__, __FILE__)
+        ).c_str()
+      );
     else
       return get_error_map(__func__, err, __LINE__, __FILE__);
   }
@@ -2895,7 +2899,12 @@ Json::Value webpg::getKeyListWorker(
 
   if(err != GPG_ERR_NO_ERROR) {
     if (cb_status != NULL)
-      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)).c_str());
+      cb_status(
+        APIObj,
+        writer.write(
+          get_error_map(__func__, err, __LINE__, __FILE__)
+        ).c_str()
+      );
     else
       return get_error_map(__func__, err, __LINE__, __FILE__);
   }
@@ -2904,7 +2913,12 @@ Json::Value webpg::getKeyListWorker(
 
   if (result->truncated) {
     if (cb_status != NULL)
-      cb_status(APIObj, writer.write(get_error_map(__func__, err, __LINE__, __FILE__)).c_str());
+      cb_status(
+        APIObj,
+        writer.write(
+          get_error_map(__func__, err, __LINE__, __FILE__)
+        ).c_str()
+      );
     else
       return get_error_map(__func__, err, __LINE__, __FILE__);
   }
@@ -5269,21 +5283,13 @@ int main(int argc, char* argv[]) {
       inp = "";
 
       std::cin.read((char*) &len, sizeof(len));
-//      std::cerr << "Total length: " << len << std::endl;
 
-      char *str;
-      str = new char[len];
+      char *str = new char[len];
 
       std::cout.sync_with_stdio(false);
       std::cin.sync_with_stdio(false);
-      // std::cin.read works, but probably faster with fread..
-//      std::cin.read(str, len);
 
       size_t frres = fread(str, sizeof(char), len, stdin);
-
-      // fscanf method even faster? it fails on complicated strings
-//      std::string format = "%" + i_to_str(len) + "s";
-//      fscanf(stdin, format.c_str(), str);
 
       if (frres)
         inp += str;
@@ -5297,7 +5303,6 @@ int main(int argc, char* argv[]) {
     bool parseResult = _action_reader.parse(inp, input_json);
     if (parseResult == false)
       res = _action_reader.getFormatedErrorMessages();
-//    std::cerr << "input_json: " << input_json << std::endl;
 
     // Check for the "func" member, which indicates a function is described.
     if (input_json.isMember("func") == true) {
