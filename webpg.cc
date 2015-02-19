@@ -4520,6 +4520,7 @@ MultipartMixed* webpg::createMessage(
     int messageType, // Signed, Encrypted
     const std::string& subject,
     const std::string& msgBody,
+    const Json::Value& attachments,
     const boost::optional<std::string>& mimeType
 ) {
   // define the MultipartMixed message envelope
@@ -4611,17 +4612,34 @@ MultipartMixed* webpg::createMessage(
     QP::Encoder qp;
     plain->body().code(qp);
 
-    // Push the plain MimeEntity into the MimeMultipart message
-    message->body().parts().push_back(plain);
+    if (attachments.size() > 0) {
+      MaxLineLen mll(72);
+      MimeEntity* multipart_mixed = new MultipartMixed;
+      multipart_mixed->header().contentTransferEncoding("quoted-printable");
+      multipart_mixed->body()
+        .preamble("This is a multi-part message in MIME format.");
+      multipart_mixed->body().parts().push_back(plain);
+      for (unsigned int nattach = 0; nattach < attachments.size(); nattach++) {
+        att = new Attachment(attachments[nattach]["filename"].asString(),
+          ContentType(
+              attachments[nattach]["type"].asString(),
+              attachments[nattach]["subtype"].asString()
+          )
+        );
+        att->header().contentTransferEncoding("base64");
+        att->body().assign(attachments[nattach]["data"].asString());
+        att->body().code(mll);
+        multipart_mixed->body().parts().push_back(att);
+      }
+      message->body().parts().push_back(multipart_mixed);
+      msgBodyWH << *multipart_mixed;
+    } else {
+      // Push the plain MimeEntity into the MimeMultipart message
+      message->body().parts().push_back(plain);
+      msgBodyWH << *plain;
+    }
 
-    msgBodyWH = "Content-Type: ";
-    msgBodyWH += plain->header().contentType().str();
-    msgBodyWH += "\r\nContent-Transfer-Encoding: ";
-    msgBodyWH += plain->header().contentTransferEncoding().str();
-    msgBodyWH += "\r\n\r\n";
-    msgBodyWH += plain->body();
-
-    crypto_result = webpg::gpgSignText(msgBodyWH,
+    crypto_result = webpg::gpgSignText(msgBodyWH.str(),
                                        signers,
                                        1);
 
@@ -4738,6 +4756,7 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
   Json::Value signers = msgInfo["signers"];
   std::string subject = msgInfo["subject"].asString();
   std::string msgBody = msgInfo["message"].asString();
+  Json::Value attachments = msgInfo["attachments"];
 
   std::string mimeType = (msgInfo.isMember("mimeType") == true) ?
       msgInfo["mimeType"].asString() : "text/plain";
@@ -4777,6 +4796,7 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
     msgType,
     subject,
     msgBody,
+    attachments,
     mimeType
   );
 

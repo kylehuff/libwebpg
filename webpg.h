@@ -979,6 +979,7 @@ private:
       int messageType, // Signed, Encrypted
       const std::string& subject,
       const std::string& msgBody,
+      const Json::Value& attachments,
       const boost::optional<std::string>& mimeType
   );
 
