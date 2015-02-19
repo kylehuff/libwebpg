@@ -4603,7 +4603,7 @@ MultipartMixed* webpg::createMessage(
     plain->header().contentType().set(mimeTypeValue.c_str());
     plain->header().contentTransferEncoding("quoted-printable");
 
-    std::string msgBodyWH;
+    std::stringstream msgBodyWH;
 
     plain->body().assign(msgBody.c_str());
     plain->body().push_back(NEWLINE);
@@ -4721,57 +4721,7 @@ static size_t readcb(void *ptr, size_t size, size_t nmemb, void *stream) {
 
 std::string pgpMimeToString(MimeEntity* pMe, const char* boundary = "") {
   std::stringstream messageString;
-  std::string parentBoundary;
-
-  // Output the headers
-  Header::iterator hbit, heit;
-  hbit = pMe->header().begin();
-  heit = pMe->header().end();
-  for(; hbit != heit; ++hbit) {
-    messageString << hbit->name() << ": ";
-
-    // Check if this is line needs to be wrapped (has protocol)
-    std::size_t proto_pos = hbit->value().find("; protocol");
-
-    // Wrap the line
-    if (proto_pos != std::string::npos) {
-      messageString << hbit->value().substr(0, proto_pos + 2)
-        << "\r\n\t" << hbit->value().substr(proto_pos + 2)
-        << "\r\n";
-    } else {
-      messageString << hbit->value() << "\r\n";
-    }
-  }
-
-  messageString << "\r\n";
-  if(pMe->body().preamble().length())
-    messageString << pMe->body().preamble() << "\r\n";
-
-  if(pMe->body().epilogue().length())
-    messageString << pMe->body().epilogue() << "\r\n";
-
-  if(pMe->header().contentType().param("boundary").length()) {
-    messageString << "--"
-          << pMe->header().contentType().param("boundary")
-          << "\r\n";
-    parentBoundary = pMe->header().contentType().param("boundary");
-  } else if (strlen(boundary))
-    parentBoundary = boundary;
-
-  if(pMe->body().length()) {
-    messageString << pMe->body() << "\r\n";
-
-    if(pMe->header().contentType().param("boundary").length() < 1)
-      messageString << "--" << parentBoundary << "\r\n";
-
-  }
-
-  MimeEntityList::iterator mbit = pMe->body().parts().begin(),
-                  meit = pMe->body().parts().end();
-
-  for(;mbit!=meit;++mbit)
-    messageString << pgpMimeToString(*mbit, parentBoundary.c_str());
-
+  messageString << *pMe;
   return messageString.str();
 }
 
@@ -4839,8 +4789,6 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
   }
 
   std::string buffern = pgpMimeToString(me);
-  buffern.replace(buffern.length() - 2, buffern.length(), "--");
-  buffern += "\r\n";
 
   readarg_t rarg;
   rarg.data = (char *) buffern.c_str();
