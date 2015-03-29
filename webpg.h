@@ -49,8 +49,8 @@ typedef int ssize_t;
 #define WEBPG_PLUGIN_TYPE_NATIVEHOST  4
 
 #define WEBPG_VERSION_MAJOR           0
-#define WEBPG_VERSION_MINOR           8
-#define WEBPG_VERSION_STRING          "0.9"
+#define WEBPG_VERSION_MINOR           91
+#define WEBPG_VERSION_STRING          "0.91"
 #define WEBPG_PGPMIME_ENCRYPTED       1
 #define WEBPG_PGPMIME_SIGNED          2
 #define WEBPG_MIME_VERSION_MAJOR      1
