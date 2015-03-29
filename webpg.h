@@ -1,4 +1,4 @@
-/**********************************************************\ 
+/**********************************************************\
 Original Author: Kyle L. Huff (kylehuff)
 
 Created:    Jan 14, 2011
@@ -190,7 +190,7 @@ class webpg {
     ///
     /// @brief  Calls getKeyList() with a search string and the
     ///         secret_only paramter as false, which returns only Public Keys
-    ///         from the keyring. 
+    ///         from the keyring.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getNamedKey(
       const std::string& name,
@@ -200,7 +200,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value getExternalKey(const std::string& name)
     ///
-    /// @brief  Calls getKeyList() after setting the context to 
+    /// @brief  Calls getKeyList() after setting the context to
     ///         external mode with a search string and the secret_only paramter as
     ///         false, which returns only Public Keys
     ///////////////////////////////////////////////////////////////////////////
@@ -211,7 +211,7 @@ class webpg {
     ///
     /// @brief  Calls getKeyList() without specifying a search
     ///         string, and the secret_only paramter as false, which returns only
-    ///         Public Keys from the keyring. 
+    ///         Public Keys from the keyring.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getPublicKeyList(
       bool fastListMode=false,
@@ -224,7 +224,7 @@ class webpg {
     ///
     /// @brief  Calls getKeyList() without specifying a search
     ///         string, and the secret_only paramter as true, which returns only
-    ///         Private Keys from the keyring. 
+    ///         Private Keys from the keyring.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getPrivateKeyList(
       bool fastListMode=false,
@@ -250,7 +250,7 @@ class webpg {
     ///         of pref_value.
     ///
     /// @param  preference  The preference to set.
-    /// @param  pref_value  The value to assign to the specified preference. 
+    /// @param  pref_value  The value to assign to the specified preference.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSetPreference(
       const std::string& preference,
@@ -265,7 +265,7 @@ class webpg {
     ///         of group_value.
     ///
     /// @param  group  The group to set.
-    /// @param  group_value  The value to assign to the specified group. 
+    /// @param  group_value  The value to assign to the specified group.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSetGroup(
       const std::string& group,
@@ -313,7 +313,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgSetHomeDir(const std::string& gnupg_path)
     ///
-    /// @brief  Sets the GNUPGHOME static variable to the path specified in 
+    /// @brief  Sets the GNUPGHOME static variable to the path specified in
     ///         gnupg_path. This should be called prior to initializing the
     ///         gpgme context.
     ///////////////////////////////////////////////////////////////////////////
@@ -323,7 +323,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgSetBinary(const std::string& gnupg_exec)
     ///
-    /// @brief  Sets the GNUPGBIN static variable to the path specified in 
+    /// @brief  Sets the GNUPGBIN static variable to the path specified in
     ///         gnupg_exec. This should be called prior to initializing the
     ///         gpgme context.
     ///////////////////////////////////////////////////////////////////////////
@@ -333,7 +333,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgSetGPGConf(const std::string& gpgconf_exec)
     ///
-    /// @brief  Sets the GPGCONF static variable to the path specified in 
+    /// @brief  Sets the GPGCONF static variable to the path specified in
     ///         gpgconf_exec.
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSetGPGConf(const std::string& gpgconf_exec);
@@ -422,7 +422,7 @@ class webpg {
     ///                             Json::Value& signers,
     ///                             int sign_mode)
     ///
-    /// @brief  Signs the text specified in plain_text with the key ids 
+    /// @brief  Signs the text specified in plain_text with the key ids
     ///         specified in <signers>, with the signature mode specified in
     ///         <sign_mode>.
     ///////////////////////////////////////////////////////////////////////////
@@ -481,7 +481,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgEnableKey(const std::string& keyid)
     ///
-    /// @brief  Sets the key specified with keyid as enabled in gpupg. 
+    /// @brief  Sets the key specified with keyid as enabled in gpupg.
     ///
     /// @param  keyid    The ID of the key to enable.
     ///////////////////////////////////////////////////////////////////////////
@@ -490,7 +490,7 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     /// @fn Json::Value gpgDisableKey(const std::string& keyid)
     ///
-    /// @brief  Sets the key specified with keyid as disabled in gpupg. 
+    /// @brief  Sets the key specified with keyid as disabled in gpupg.
     ///
     /// @param  keyid   The ID of the key to disable.
     ///////////////////////////////////////////////////////////////////////////
@@ -501,10 +501,10 @@ class webpg {
     ///                           const std::string& key_length,
     ///                           const std::string& subkey_type,
     ///                           const std::string& subkey_length,
-    ///                           const std::string& name_real, 
+    ///                           const std::string& name_real,
     ///                           const std::string& name_comment,
     ///                           const std::string& name_email,
-    ///                           const std::string& expire_date, 
+    ///                           const std::string& expire_date,
     ///                           const std::string& passphrase)
     ///
     /// @brief  Queues a threaded gpg genkey operation.
@@ -533,9 +533,9 @@ class webpg {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    /// @fn std::string gpgGenSubKey(const std::string& keyid, 
+    /// @fn std::string gpgGenSubKey(const std::string& keyid,
     ///         const std::string& subkey_type, const std::string& subkey_length,
-    ///         const std::string& subkey_expire, bool sign_flag, bool enc_flag, bool auth_flag) 
+    ///         const std::string& subkey_expire, bool sign_flag, bool enc_flag, bool auth_flag)
     ///
     /// @brief  Queues a threaded gpg gensubkey operation.
     ///
@@ -836,7 +836,7 @@ class webpg {
     Json::Value gpgChangePassphrase(const std::string& keyid);
 
     int verifyDomainKey(
-      const std::string& domain, 
+      const std::string& domain,
       const std::string& domain_key_fpr,
       long uid_idx,
       const std::string& required_sig_keyid
