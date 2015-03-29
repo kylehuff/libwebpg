@@ -27,6 +27,11 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #include <mimetic/mimetic.h>
 #include <mimetic/streambufs.h>
 #include <curl.h>
+#include <cyassl/ssl.h>
+#include <cyassl/error-ssl.h>
+
+#include "certificates.h"
+
 
 #ifdef HAVE_W32_SYSTEM
 #include <windows.h>
@@ -45,7 +50,7 @@ typedef int ssize_t;
 
 #define WEBPG_VERSION_MAJOR           0
 #define WEBPG_VERSION_MINOR           8
-#define WEBPG_VERSION_STRING          "0.8"
+#define WEBPG_VERSION_STRING          "0.9"
 #define WEBPG_PGPMIME_ENCRYPTED       1
 #define WEBPG_PGPMIME_SIGNED          2
 #define WEBPG_MIME_VERSION_MAJOR      1

@@ -4652,7 +4652,7 @@ MultipartMixed* webpg::createMessage(
     }
 
     att = new Attachment("signature.asc",
-                         ContentType("application","pgp-signature")
+      ContentType("application","pgp-signature")
     );
     att->header().contentDescription("OpenPGP digital signature");
     att->header().contentTransferEncoding("7bit");
@@ -4706,7 +4706,7 @@ MultipartMixed* webpg::createMessage(
     message->body().parts().push_back(pgpMimeVersion);
 
     att = new Attachment("encrypted.asc",
-                    ContentType("application","octet-stream")
+      ContentType("application","octet-stream")
     );
     att->header().contentDescription("OpenPGP encrypted message");
     att->header().contentTransferEncoding("quoted-printable");
@@ -4741,6 +4741,41 @@ std::string pgpMimeToString(MimeEntity* pMe, const char* boundary = "") {
   std::stringstream messageString;
   messageString << *pMe;
   return messageString.str();
+}
+
+CURLcode sslContextCallback(CURL * curl, void * ctx, void * parm) {
+    // Load CA certificates from memory
+    CyaSSL_CTX_set_verify(reinterpret_cast<CYASSL_CTX*>(ctx),
+                          SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, 0
+    );
+
+    int ret = CyaSSL_CTX_load_verify_buffer(reinterpret_cast<CYASSL_CTX*>(ctx),
+                                            google_root_ca,
+                                            (long)sizeof(google_root_ca),
+                                            SSL_FILETYPE_ASN1);
+
+    if (ret != SSL_SUCCESS) {
+        if (ret == SSL_BAD_FILETYPE)
+          std::cerr << "file is the wrong format" << std::endl;
+
+        if (ret == SSL_BAD_FILE)
+          std::cerr << "file doesn't exist, can't be read, or is corrupted." << std::endl;
+
+        if (ret == MEMORY_E) {
+          std::cerr << "out of memory condition occurs." << std::endl;
+          return CURLE_OUT_OF_MEMORY;
+        }
+
+        if (ret == ASN_INPUT_E)
+          std::cerr << "Base16 decoding fails on the file." << std::endl;
+
+        if (ret == BUFFER_E)
+          std::cerr << "chain buffer is bigger than the receiving buffer." << std::endl;
+
+        return CURLE_SSL_CERTPROBLEM;
+    }
+
+    return CURLE_OK;
 }
 
 Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
@@ -4824,11 +4859,9 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
     curl_easy_setopt(curl, CURLOPT_URL, (char *) host_url.c_str());
 
     curl_easy_setopt(curl, CURLOPT_USE_SSL, (long) CURLUSESSL_ALL);
-    // FIXME: Workaround for issues with cyassl:
-    //  "SSL_connect failed with error -188: ASN no signer error to confirm failure"
-    //  There has to be a better way to resolve this issue that will work for
-    //  all WebPG target platforms and configurations.
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_CTX_FUNCTION, *sslContextCallback);
+
     curl_easy_setopt(curl, CURLOPT_USERNAME, (char *) username.c_str());
     curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, (char *) bearer.c_str());
 
@@ -4852,6 +4885,8 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
     }
     curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
+    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+
     res = curl_easy_setopt(curl, CURLOPT_READFUNCTION, readcb);
     if(res != CURLE_OK) {
       response["error"] = true;
@@ -4866,8 +4901,12 @@ Json::Value webpg::sendMessage(const Json::Value& msgInfo) {
       return response;
     }
 
+#ifdef DEBUG
+    #define DEBUG_CYASSL
     // debugging
-//    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    CyaSSL_Debugging_ON();
+#endif
 
     // Send the message (including headers)
     res = curl_easy_perform(curl);
