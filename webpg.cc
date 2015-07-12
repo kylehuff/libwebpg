@@ -10,6 +10,10 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 
 #include "webpg.h"
 
+#ifdef FB_MACOSX
+#include <mach-o/dyld.h>
+#endif
+
 #ifdef H_EMSCRIPTEN
 #include "webpg-emsc.h"
 #endif
@@ -624,11 +628,16 @@ void webpg::init()
       : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) ? "NATIVEHOST"
       : "UNKNOWN";
 
-  size_t bufsize = 255;
+  size_t bufsize = 1024;
   char *buf = new char[bufsize];
 
 #ifdef HAVE_W32_SYSTEM
   GetModuleFileName(NULL, buf, bufsize);
+#elif FB_MACOSX
+  char path[bufsize];
+  uint32_t size = sizeof(path);
+  _NSGetExecutablePath(path, &size);
+  buf = path;
 #else
   ssize_t rres = readlink("/proc/self/exe", buf, bufsize);
   (void)rres;
