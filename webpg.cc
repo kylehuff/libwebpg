@@ -5010,7 +5010,7 @@ Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
   res["update"] = false;
 
 #ifdef HAVE_W32_SYSTEM
-  char* path_separator = "\\";
+  const char* path_separator = "\\";
 #else
   char path_separator = '/';
 #endif
@@ -5022,7 +5022,9 @@ Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
   if (filestat == 0) {
     path += " --unattendedmodeui none --mode unattended --unattendedmodebehavior download";
     int update_res = system(path.c_str());
+#ifndef HAVE_W32_SYSTEM
     update_res = WEXITSTATUS(update_res);
+#endif
     if (update_res == 0) {
       res["error"] = false;
       res["update"] = true;
