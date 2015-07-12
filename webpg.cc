@@ -5005,6 +5005,9 @@ Json::Value webpg::verifyPGPMimeMessage(const std::string& msg) {
 
 Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
   struct stat info;
+  Json::Value res;
+  res["error"] = true;
+  res["update"] = false;
 
 #ifdef HAVE_W32_SYSTEM
   char* path_separator = "\\";
@@ -5020,22 +5023,26 @@ Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
     path += " --unattendedmodeui none --mode unattended --unattendedmodebehavior download";
     int update_res = system(path.c_str());
     update_res = WEXITSTATUS(update_res);
-    if (update_res == 0)
-      return "{error: false, update: true}";
-    else if (update_res == 1)
-      return "{error: false, update: false}";
-    else if (update_res == 2)
-      return "{error: true, status: \"Error connecting to remote server or invalid XML file\"}";
+    if (update_res == 0) {
+      res["error"] = false;
+      res["update"] = true;
+    } else if (update_res == 1) {
+      res["error"] = false;
+      res["update"] = false;
+    } else if (update_res == 2)
+      res["status"] = "Error connecting to remote server or invalid XML file";
     else if (update_res == 3)
-      return "{error: true, status: \"An error occurred downloading the file\"}";
+      res["status"] = "An error occurred downloading the file";
     else if (update_res == 4)
-      return "{error: true, status: \"An error occurred executing the downloaded update\"}";
+      res["status"] = "An error occurred executing the downloaded update";
     else if (update_res == 5)
-      return "{error: true, status: \"Update check disabled through check_for_updates setting\"}";
+      res["status"] = "Update check disabled through check_for_updates setting";
     else
-      return "{error: true, status: \"Unknown error\"}";
+      res["status"] = "Unknown error";
+    return res;
   }
-  return "{error: true, status: \"autoupdate not installed\"}";
+  res["status"] = "autoupdate not installed";
+  return res;
 }
 
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
