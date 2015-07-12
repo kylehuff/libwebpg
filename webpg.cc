@@ -4550,7 +4550,7 @@ Json::Value webpg::showPhotoCallback(
         std::string command = "cp " + image + " " + path + keyid + "-latest." + extension;
         system(command.c_str());
 #ifdef HAVE_W32_SYSTEM
-        command = "rename " + path + "/" + keyid + "-*.j\" \"*.jpg\"";
+        command = "rename " + path + "\\" + keyid + "-*.j\" \"*.jpg\"";
 #else
         command = "for file in " + path + "/" + keyid + "*.j; do mv $file ${file}pg; done";
 #endif
@@ -5001,6 +5001,41 @@ Json::Value webpg::verifyPGPMimeMessage(const std::string& msg) {
   std::string::const_iterator bit = msg.begin(), eit = msg.end(), it;
   MimeEntity me(bit, eit);
   return pgpMimeToString(&me);
+}
+
+Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
+  struct stat info;
+
+#ifdef HAVE_W32_SYSTEM
+  char* path_separator = "\\";
+#else
+  char path_separator = '/';
+#endif
+
+  webpg::get_webpg_status();
+  std::string path = webpg_status_map["plugin"]["path"].asString();
+  path = path.substr(0, path.find_last_of("/\\")) + path_separator + "autoupdate";
+  int filestat = stat(path.c_str(), &info);
+  if (filestat == 0) {
+    path += " --unattendedmodeui none --mode unattended --unattendedmodebehavior download";
+    int update_res = system(path.c_str());
+    update_res = WEXITSTATUS(update_res);
+    if (update_res == 0)
+      return "{error: false, update: true}";
+    else if (update_res == 1)
+      return "{error: false, update: false}";
+    else if (update_res == 2)
+      return "{error: true, status: \"Error connecting to remote server or invalid XML file\"}";
+    else if (update_res == 3)
+      return "{error: true, status: \"An error occurred downloading the file\"}";
+    else if (update_res == 4)
+      return "{error: true, status: \"An error occurred executing the downloaded update\"}";
+    else if (update_res == 5)
+      return "{error: true, status: \"Update check disabled through check_for_updates setting\"}";
+    else
+      return "{error: true, status: \"Unknown error\"}";
+  }
+  return "{error: true, status: \"autoupdate not installed\"}";
 }
 
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
@@ -5556,6 +5591,8 @@ int main(int argc, char* argv[]) {
         res = webpg.quotedPrintableDecode(params[0].asString());
       else if (func == "verifyPGPMimeMessage")
         res = webpg.verifyPGPMimeMessage(params[0].asString());
+      else if (func == "checkForUpdate")
+        res = webpg.checkForUpdate(params[0].asBool());
       else
         res = get_error_map(__func__,
                             GPG_ERR_UNKNOWN_COMMAND,

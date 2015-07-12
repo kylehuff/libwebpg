@@ -983,6 +983,7 @@ class webpg {
     Json::Value sendMessage(const Json::Value& msgInfo);
     Json::Value quotedPrintableDecode(const std::string& msg);
     Json::Value verifyPGPMimeMessage(const std::string& msg);
+    Json::Value checkForUpdate(const boost::optional<bool> force);
 
 private:
   // Private constructs
