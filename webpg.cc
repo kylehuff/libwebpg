@@ -1616,7 +1616,7 @@ Json::Value webpg::restoreGPGConfig()
 Json::Value webpg::gpgSetHomeDir(const std::string& gnupg_path)
 {
   GNUPGHOME = gnupg_path;
-  return GNUPGHOME;
+  return gnupg_path;
 }
 
 Json::Value webpg::gpgGetHomeDir()
@@ -4514,6 +4514,60 @@ Json::Value webpg::gpgGetPhotoInfo(const std::string& keyid) {
   return response;
 }
 
+Json::Value webpg::showPhotoCallback(
+    const std::string& keyid,
+    const std::string& path,
+    const std::string& extension,
+    int index,
+    int count
+) {
+  Json::Value response;
+  struct stat info;
+  int i = 0, p_index;
+  std::string image;
+  std::ofstream photo;
+
+  if (stat(path.c_str(), &info) != 0) {
+    std::string cmd = "mkdir " + path;
+    system(cmd.c_str());
+  }
+
+  while (i < count) {
+    p_index = i + index + 1;
+    image = path + keyid + '-' + i_to_str(i) + '-' + i_to_str(p_index) + ".j";
+    if (stat(image.c_str(), &info) != 0) {
+      photo.open(image.c_str(), std::ios::binary);
+      while (!std::cin.eof() && !std::cin.bad() && !std::cin.fail()) {
+        photo.put(std::cin.get());
+      }
+      photo.close();
+
+      std::cerr << p_index << std::endl;
+      std::cerr << count << std::endl;
+      std::cerr << index << std::endl;
+
+      if (p_index == count + index) {
+        std::string command = "cp " + image + " " + path + keyid + "-latest." + extension;
+        system(command.c_str());
+#ifdef HAVE_W32_SYSTEM
+        command = "rename " + path + "\\" + keyid + "-*.j\" \"*.jpg\"";
+#else
+        command = "for file in " + path + "/" + keyid + "*.j; do mv $file ${file}pg; done";
+#endif
+        system(command.c_str());
+      }
+
+      break;
+    }
+    i++;
+  }
+
+  std::string full_path = path + keyid + "-latest." + extension;
+  response["photo"] = full_path;
+  std::cerr << response << std::endl;
+  return response;
+}
+
 MultipartMixed* webpg::createMessage(
     const Json::Value& recipients_m,
     const Json::Value& signers,
@@ -4947,6 +5001,48 @@ Json::Value webpg::verifyPGPMimeMessage(const std::string& msg) {
   std::string::const_iterator bit = msg.begin(), eit = msg.end(), it;
   MimeEntity me(bit, eit);
   return pgpMimeToString(&me);
+}
+
+Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
+  struct stat info;
+  Json::Value res;
+  res["error"] = true;
+  res["update"] = false;
+
+#ifdef HAVE_W32_SYSTEM
+  char* path_separator = "\\";
+#else
+  char path_separator = '/';
+#endif
+
+  webpg::get_webpg_status();
+  std::string path = webpg_status_map["plugin"]["path"].asString();
+  path = path.substr(0, path.find_last_of("/\\")) + path_separator + "autoupdate";
+  int filestat = stat(path.c_str(), &info);
+  if (filestat == 0) {
+    path += " --unattendedmodeui none --mode unattended --unattendedmodebehavior download";
+    int update_res = system(path.c_str());
+    update_res = WEXITSTATUS(update_res);
+    if (update_res == 0) {
+      res["error"] = false;
+      res["update"] = true;
+    } else if (update_res == 1) {
+      res["error"] = false;
+      res["update"] = false;
+    } else if (update_res == 2)
+      res["status"] = "Error connecting to remote server or invalid XML file";
+    else if (update_res == 3)
+      res["status"] = "An error occurred downloading the file";
+    else if (update_res == 4)
+      res["status"] = "An error occurred executing the downloaded update";
+    else if (update_res == 5)
+      res["status"] = "Update check disabled through check_for_updates setting";
+    else
+      res["status"] = "Unknown error";
+    return res;
+  }
+  res["status"] = "autoupdate not installed";
+  return res;
 }
 
 #ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
@@ -5483,7 +5579,13 @@ int main(int argc, char* argv[]) {
                                 params[2].asString());
       else if (func == "gpgGetPhotoInfo")
         res = webpg.gpgGetPhotoInfo(params[0].asString());
-      else if (func == "setTempGPGOption")
+      else if (func == "showPhotoCallback") {
+        res = webpg.showPhotoCallback(params["keyid"].asString(),
+                                      params["path"].asString(),
+                                      params["extension"].asString(),
+                                      params["index"].asInt(),
+                                      params["count"].asInt());
+      } else if (func == "setTempGPGOption")
         res = webpg.setTempGPGOption(params["option"].asString(),
                                      params["value"].asString());
       else if (func == "restoreGPGConfig")
@@ -5496,6 +5598,8 @@ int main(int argc, char* argv[]) {
         res = webpg.quotedPrintableDecode(params[0].asString());
       else if (func == "verifyPGPMimeMessage")
         res = webpg.verifyPGPMimeMessage(params[0].asString());
+      else if (func == "checkForUpdate")
+        res = webpg.checkForUpdate(params[0].asBool());
       else
         res = get_error_map(__func__,
                             GPG_ERR_UNKNOWN_COMMAND,

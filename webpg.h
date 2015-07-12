@@ -13,6 +13,7 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #include <cerrno>
 #include <assert.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define BOOST_THREAD_USE_LIB
 // BOOST includes
@@ -49,8 +50,8 @@ typedef int ssize_t;
 #define WEBPG_PLUGIN_TYPE_NATIVEHOST  4
 
 #define WEBPG_VERSION_MAJOR           0
-#define WEBPG_VERSION_MINOR           91
-#define WEBPG_VERSION_STRING          "0.91"
+#define WEBPG_VERSION_MINOR           92
+#define WEBPG_VERSION_STRING          "0.92"
 #define WEBPG_PGPMIME_ENCRYPTED       1
 #define WEBPG_PGPMIME_SIGNED          2
 #define WEBPG_MIME_VERSION_MAJOR      1
@@ -851,6 +852,13 @@ class webpg {
     );
 
     Json::Value gpgGetPhotoInfo(const std::string& keyid);
+    Json::Value showPhotoCallback(
+      const std::string& keyid,
+      const std::string& path,
+      const std::string& extension,
+      int index,
+      int count
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string get_version()
@@ -975,6 +983,7 @@ class webpg {
     Json::Value sendMessage(const Json::Value& msgInfo);
     Json::Value quotedPrintableDecode(const std::string& msg);
     Json::Value verifyPGPMimeMessage(const std::string& msg);
+    Json::Value checkForUpdate(const boost::optional<bool> force);
 
 private:
   // Private constructs
