@@ -13,6 +13,7 @@ Copyright 2013 Kyle L. Huff, CURETHEITCH development team
 #include <cerrno>
 #include <assert.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define BOOST_THREAD_USE_LIB
 // BOOST includes
@@ -851,6 +852,13 @@ class webpg {
     );
 
     Json::Value gpgGetPhotoInfo(const std::string& keyid);
+    Json::Value showPhotoCallback(
+      const std::string& keyid,
+      const std::string& path,
+      const std::string& extension,
+      int index,
+      int count
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn std::string get_version()
