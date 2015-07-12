@@ -5027,6 +5027,9 @@ Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
   webpg::get_webpg_status();
   std::string path = webpg_status_map["plugin"]["path"].asString();
   path = path.substr(0, path.find_last_of("/\\")) + path_separator + "autoupdate";
+#ifdef FB_MACOSX
+  path += "/Contents/MacOS/osx-intel";
+#endif
   int filestat = stat(path.c_str(), &info);
   if (filestat == 0) {
     path += " --unattendedmodeui none --mode unattended --unattendedmodebehavior download";
