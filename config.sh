@@ -76,7 +76,7 @@ case "$UNAME" in
     BINEXT='.exe'
     SOEXT='.dll'
     CXXFLAGS+=' -DHAVE_W32_SYSTEM'
-    PLDFLAGS+='-static-libgcc -lwsock32 -lgdi32 -lws2_32'
+    PLDFLAGS+='-static-libstc++ -static-libgcc -lwsock32 -lgdi32 -lws2_32'
     if [ "$TARGET_CPU" == "x86_64" ]
     then
       DISTDIR='WINNT_x86_64-msvc'
@@ -145,7 +145,6 @@ then
 else
   >&2 echo "Added flags ${CXX}"
   #CXXFLAGS+=" -Wno-unused-local-typedefs"
-  STATIC_GCC="-static-libstdc++"
 fi
 
 LDFLAGS="$QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a$QUOTE
