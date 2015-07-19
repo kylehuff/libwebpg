@@ -145,6 +145,7 @@ then
 else
   >&2 echo "Added flags ${CXX}"
   #CXXFLAGS+=" -Wno-unused-local-typedefs"
+  STATIC_GCC="-static-libstdc++"
 fi
 
 LDFLAGS="$QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a$QUOTE
