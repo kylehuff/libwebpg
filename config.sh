@@ -23,6 +23,12 @@ else
   UNAME=$(uname)
 fi
 
+if [[ $CXX =~ .*mingw.* ]]
+then
+  UNAME="Msys"
+  echo "Msys!!"
+fi
+
 QUOTE=""
 
 case "$UNAME" in
@@ -75,7 +81,7 @@ case "$UNAME" in
     PLATFORM='mingw'
     BINEXT='.exe'
     SOEXT='.dll'
-    CXXFLAGS+=' -DHAVE_W32_SYSTEM'
+    CXXFLAGS+=' -DHAVE_W32_SYSTEM -DWINVER=0x0501 -D_WIN32_WINNT=0x0501'
     PLDFLAGS+='-static-libstdc++ -static-libgcc -lwsock32 -lgdi32 -lws2_32'
     if [ "$TARGET_CPU" == "x86_64" ]
     then
