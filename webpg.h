@@ -51,8 +51,8 @@ typedef int ssize_t;
 #define WEBPG_PLUGIN_TYPE_CHILDPROCESS  5
 
 #define WEBPG_VERSION_MAJOR           0
-#define WEBPG_VERSION_MINOR           92
-#define WEBPG_VERSION_STRING          "0.92"
+#define WEBPG_VERSION_MINOR           108
+#define WEBPG_VERSION_STRING          "0.108"
 #define WEBPG_PGPMIME_ENCRYPTED       1
 #define WEBPG_PGPMIME_SIGNED          2
 #define WEBPG_MIME_VERSION_MAJOR      1
