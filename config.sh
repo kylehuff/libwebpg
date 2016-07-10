@@ -153,7 +153,7 @@ else
   #CXXFLAGS+=" -Wno-unused-local-typedefs"
 fi
 
-LDFLAGS="$QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme-pthread.a$QUOTE
+LDFLAGS="$QUOTE$PROJECT_ROOT/libs/libgpgme/$DISTDIR/libgpgme.a$QUOTE
   $QUOTE$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/libgpg-error.a$QUOTE
   $QUOTE$PROJECT_ROOT/libs/libassuan/$DISTDIR/libassuan.a$QUOTE
   $QUOTE$PROJECT_ROOT/libs/jsoncpp/$DISTDIR/libjsoncpp.a$QUOTE
