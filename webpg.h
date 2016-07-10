@@ -5,7 +5,7 @@ Created:    Jan 14, 2011
 License:    GNU General Public License, version 2
             http://www.gnu.org/licenses/gpl-2.0.html
 
-Copyright 2013 Kyle L. Huff, CURETHEITCH development team
+Copyright 2010 - 2016 Kyle L. Huff, CURETHEITCH development team
 \**********************************************************/
 #include <sstream>
 #include <iostream>
@@ -44,10 +44,11 @@ typedef int ssize_t;
 #endif
 #endif
 
-#define WEBPG_PLUGIN_TYPE_CLI         1
-#define WEBPG_PLUGIN_TYPE_LIB         2
-#define WEBPG_PLUGIN_TYPE_NPAPI       3
-#define WEBPG_PLUGIN_TYPE_NATIVEHOST  4
+#define WEBPG_PLUGIN_TYPE_CLI           1
+#define WEBPG_PLUGIN_TYPE_LIB           2
+#define WEBPG_PLUGIN_TYPE_NPAPI         3
+#define WEBPG_PLUGIN_TYPE_NATIVEHOST    4
+#define WEBPG_PLUGIN_TYPE_CHILDPROCESS  5
 
 #define WEBPG_VERSION_MAJOR           0
 #define WEBPG_VERSION_MINOR           92
@@ -145,6 +146,8 @@ class webpg {
     /// @brief  Initializes the webpgPlugin and sets the status variables.
     ///////////////////////////////////////////////////////////////////////////
     void init();
+    int listen();
+    void processMessage(std::string);
 
     ///////////////////////////////////////////////////////////////////////////
     /// @fn gpgme_ctx_t get_gpgme_ctx()
@@ -195,7 +198,8 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     Json::Value getNamedKey(
       const std::string& name,
-      const boost::optional<bool> fast
+      bool fast,
+      STATUS_PROGRESS_CB callback=NULL
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -361,8 +365,26 @@ class webpg {
     Json::Value gpgEncrypt(
       const std::string& data,
       const Json::Value& enc_to_keyids,
-      const boost::optional<bool>& sign,
-      const boost::optional<Json::Value>& opt_signers
+      bool sign,
+      const Json::Value& opt_signers
+    );
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// @fn Json::Value gpgEncryptSign(const std::string& data,
+    ///                                const Json::Value& enc_to_keyids,
+    ///                                const Json::Value& signers,
+    ///
+    /// @brief  Encrypts the data passed in data with the key ids passed in
+    ///         enc_to_keyids and optionally signs the data.
+    ///
+    /// @param  data    The data to encrypt.
+    /// @param  enc_to_keyids   An array of key ids to encrypt to (recpients).
+    /// @param  sign    The data should be also be signed.
+    ///////////////////////////////////////////////////////////////////////////
+    Json::Value gpgEncryptSign(
+      const std::string& data,
+      const Json::Value& enc_to_keyids,
+      const Json::Value& signers
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -378,8 +400,8 @@ class webpg {
     ///////////////////////////////////////////////////////////////////////////
     Json::Value gpgSymmetricEncrypt(
       const std::string& data,
-      const boost::optional<bool>& sign,
-      const boost::optional<Json::Value>& opt_signers
+      bool sign,
+      const Json::Value& opt_signers
     );
 
     ///////////////////////////////////////////////////////////////////////////
@@ -415,7 +437,7 @@ class webpg {
 
     Json::Value gpgVerify(
       const std::string& data,
-      const boost::optional<std::string>& plaintext
+      const std::string& plaintext
     );
 
     ///////////////////////////////////////////////////////////////////////////

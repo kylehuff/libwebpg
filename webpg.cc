@@ -38,6 +38,16 @@ unsigned int WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NPAPI;
 unsigned int WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_CLI;
 #endif
 
+void wdebug(std::string msg, int line, const std::string& func) {
+  std::cerr << "----------\n" << func << " | " << line << ": " << msg << std::endl << "----------\n";
+}
+
+#ifdef DEBUG
+#define debug(msg) (wdebug((std::string) msg, __LINE__, __func__))
+#else
+#define debug(msg) ()
+#endif
+
 // A global holder for the current edit_fnc status
 std::string edit_status;
 
@@ -121,7 +131,6 @@ static int current_edit = WEBPG_EDIT_NONE;
 GENKEY_PROGRESS_CB g_callback;
 STATUS_PROGRESS_CB s_callback;
 int EXTERNAL = 0;
-std::string fnOutputString;
 std::string original_gpg_config;
 Json::Value webpg_status_map;
 
@@ -578,6 +587,7 @@ gpgme_error_t edit_fnc(
 
   gpgme_io_write (fd, response.c_str(), response.length());
   gpgme_io_write (fd, "\n", 1);
+  debug("loop complete");
 
   return error;
 }
@@ -611,7 +621,7 @@ using namespace mimetic;
 ///////////////////////////////////////////////////////////////////////////////
 void webpg::init()
 {
-  fnOutputString = "";
+  debug("webpg::init");
   gpgme_ctx_t ctx;
   gpgme_error_t err;
   Json::Value error_map(Json::objectValue);
@@ -626,6 +636,7 @@ void webpg::init()
       : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_LIB) ? "LIB"
       : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NPAPI) ? "NPAPI"
       : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) ? "NATIVEHOST"
+      : (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_CHILDPROCESS) ? "NODEJS"
       : "UNKNOWN";
 
   size_t bufsize = 1024;
@@ -726,6 +737,7 @@ void webpg::init()
     gpgme_release (ctx);
 
   webpg_status_map = response;
+  debug("webpg::init complete");
 };
 
 #ifndef H_LIBWEBPG // Do not include this method when compiling the lib
@@ -736,7 +748,7 @@ void writeOut(const Json::Value str, const bool parse=false) {
 #endif
   // if this is being called as a native-messaging host, we don't want
   //  to return a styled JSON string, as that is a waste of resources.
-  if (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST) {
+  if (WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_NATIVEHOST || WEBPG_PLUGIN_TYPE == WEBPG_PLUGIN_TYPE_CHILDPROCESS) {
     if (parse == true) {
       Json::FastWriter writer;
       ret = writer.write(str);
@@ -758,6 +770,8 @@ void writeOut(const Json::Value str, const bool parse=false) {
     if (parse == true)
       ret = str.toStyledString();
   }
+
+  debug(ret.c_str());
 
   std::cout << ret;
 }
@@ -1119,9 +1133,11 @@ Json::Value webpg::getPrivateKeyList(
         as the parameter
 */
 Json::Value webpg::getNamedKey(const std::string& name,
-                               const boost::optional<bool> fast=false)
+                               bool fast=false,
+                               STATUS_PROGRESS_CB callback)
 {
   bool fastListMode = (fast==true);
+
   // Retrieve the named key from the keylist
   return getKeyList(name, false, fastListMode);
 }
@@ -1534,7 +1550,6 @@ Json::Value webpg::setTempGPGOption(
     const std::string& option,
     const std::string& value=NULL
 ) {
-
   std::string result;
   std::string config_path = getGPGConfigFilename();
   std::string tmp_config_path = config_path + "-webpg.save";
@@ -1745,17 +1760,14 @@ response {
 Json::Value webpg::gpgEncrypt(
     const std::string& data,
     const Json::Value& enc_to_keyids,
-    const boost::optional<bool>& sign,
-    const boost::optional<Json::Value>& opt_signers
+    bool sign,
+    const Json::Value& signers
 ) {
   /* declare variables */
-  Json::Value signers;
-  if (opt_signers)
-    signers = *opt_signers;
   gpgme_ctx_t ctx = get_gpgme_ctx();
   gpgme_error_t err;
   gpgme_data_t in, out;
-  gpgme_key_t *key = new gpgme_key_t[enc_to_keyids.size()];
+  gpgme_key_t *key = new gpgme_key_t[enc_to_keyids.size() + 1];
   unsigned int nrecipients;
   Json::Value recipient, recpients, response;
   gpgme_encrypt_result_t enc_result;
@@ -1909,6 +1921,14 @@ Json::Value webpg::gpgEncrypt(
   return response;
 }
 
+Json::Value webpg::gpgEncryptSign(
+    const std::string& data,
+    const Json::Value& enc_to_keyids,
+    const Json::Value& signers
+) {
+	return webpg::gpgEncrypt(data, enc_to_keyids, 1, signers);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn Json::Value gpgSymmetricEncrypt(const std::string& data, bool sign)
 ///
@@ -1929,8 +1949,8 @@ Json::Value webpg::gpgEncrypt(
     the return value is a string buffer of the result */
 Json::Value webpg::gpgSymmetricEncrypt(
     const std::string& data,
-    const boost::optional<bool>& sign,
-    const boost::optional<Json::Value>& opt_signers
+    bool sign,
+    const Json::Value& opt_signers
 ) {
   Json::Value empty_keys;
   return webpg::gpgEncrypt(data, empty_keys, sign, opt_signers);
@@ -2204,14 +2224,17 @@ Json::Value webpg::gpgDecrypt(const std::string& data)
   return webpg::gpgDecryptVerify(data, "", 1);
 }
 
+
+
 Json::Value webpg::gpgVerify(
     const std::string& data,
-    const boost::optional<std::string>& plaintext
+    const std::string& plaintext=""
 ) {
-  if (plaintext)
-    return webpg::gpgDecryptVerify(data, *plaintext, 0);
-  else
+  if (plaintext.length()) {
+    return webpg::gpgDecryptVerify(data, plaintext, 0);
+  } else {
     return webpg::gpgDecryptVerify(data, "", 0);
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2375,8 +2398,8 @@ Json::Value webpg::gpgSignUID(
     long local_only,
     long trust_sign,
     long trust_level,
-    const boost::optional<std::string>& opt_notation_name=NULL,
-    const boost::optional<std::string>& opt_notation_value=NULL
+    const boost::optional<std::string>& opt_notation_name,
+    const boost::optional<std::string>& opt_notation_value
 ) {
   std::string notation_name, notation_value;
   if (opt_notation_name)
@@ -3345,7 +3368,7 @@ Json::Value webpg::gpgImportExternalKey(const std::string& keyid)
   key_array[0] = extern_key;
   key_array[1] = NULL;
 
-  std::cerr << extern_key->subkeys->keyid << std::endl;
+  debug(extern_key->subkeys->keyid);
 
   err = gpgme_op_import_keys (ctx, key_array);
 
@@ -3375,7 +3398,7 @@ Json::Value webpg::gpgImportExternalKey(const std::string& keyid)
   for (nimport=0, import=result->imports; import; import = import->next,
        nimport++) {
     Json::Value import_item_map;
-    std::cerr <<  gpgme_strerror(import->result) << std::endl;
+    debug(gpgme_strerror(import->result));
     import_item_map["fingerprint"] = nonnull (import->fpr);
     import_item_map["result"] = gpgme_strerror(import->result);
     import_item_map["status"] = import->status;
@@ -3576,7 +3599,7 @@ Json::Value webpg::gpgAddUID(
     const std::string& comment
 ) {
   gpgme_ctx_t ctx = get_gpgme_ctx();
-  gpgme_error_t err;
+  gpgme_error_t err = GPG_ERR_NO_ERROR;
   gpgme_data_t out = NULL;
   gpgme_key_t key = NULL;
   Json::Value response;
@@ -3602,7 +3625,12 @@ Json::Value webpg::gpgAddUID(
                   "', email='" + email + "', comment='" + comment + "');\n";
 
   current_edit = WEBPG_EDIT_ADD_UID;
-  err = gpgme_op_edit (ctx, key, edit_fnc, out, out);
+  err = gpgme_op_edit (ctx, key, edit_fnc, NULL, out);
+  size_t out_size = 0;
+  std::string out_buf;
+  out_buf = gpgme_data_release_and_get_mem (out, &out_size);
+  debug(out_buf);
+
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
 
@@ -3614,9 +3642,12 @@ Json::Value webpg::gpgAddUID(
   genuid_email = "";
   genuid_comment = "";
 
-  gpgme_data_release (out);
-  gpgme_key_unref (key);
-  gpgme_release (ctx);
+//  if (out)
+//    gpgme_data_release (out);
+  if (key)
+    gpgme_key_unref (key);
+  if (ctx)
+    gpgme_release (ctx);
 
   response["error"] = false;
   response["edit_status"] = edit_status;
@@ -3660,7 +3691,6 @@ Json::Value webpg::gpgDeleteUID(const std::string& keyid, long uid_idx)
   err = gpgme_op_edit (ctx, key, edit_fnc, out, out);
   if (err != GPG_ERR_NO_ERROR)
     return get_error_map(__func__, err, __LINE__, __FILE__);
-
 
   current_uid = "0";
 
@@ -3877,7 +3907,6 @@ Json::Value webpg::gpgExportPublicKey(const std::string& keyid)
   std::string ret;
   Json::Value chunklist(Json::arrayValue);
   chunklist[1] = chunks;
-  std::cerr << chunks << std::endl;
   if (chunks > 1) {
     Json::Value chunked_response;
     chunked_response["error"] = false;
@@ -4403,6 +4432,7 @@ Json::Value webpg::gpgAddPhoto(
   gpgme_key_t key = NULL;
   Json::Value response;
   std::string temp_path;
+  debug("made it here");
 
   char *temp_envvar = getenv("TEMP");
   if (temp_envvar != NULL) {
@@ -4412,6 +4442,7 @@ Json::Value webpg::gpgAddPhoto(
     temp_path = "/tmp/";
 
   temp_path = temp_path +  photo_name;
+  debug(temp_path);
 
   std::ofstream tmp_photo(temp_path.c_str(),
     std::ios::out | std::ios::trunc | std::ios::binary);
@@ -4535,10 +4566,11 @@ Json::Value webpg::showPhotoCallback(
   int i = 0, p_index;
   std::string image;
   std::ofstream photo;
+  int sys_ret = 0;
 
   if (stat(path.c_str(), &info) != 0) {
     std::string cmd = "mkdir " + path;
-    system(cmd.c_str());
+    sys_ret = system(cmd.c_str());
   }
 
   while (i < count) {
@@ -4551,19 +4583,15 @@ Json::Value webpg::showPhotoCallback(
       }
       photo.close();
 
-      std::cerr << p_index << std::endl;
-      std::cerr << count << std::endl;
-      std::cerr << index << std::endl;
-
       if (p_index == count + index) {
         std::string command = "cp " + image + " " + path + keyid + "-latest." + extension;
-        system(command.c_str());
+        sys_ret = system(command.c_str());
 #ifdef HAVE_W32_SYSTEM
         command = "rename " + path + "\\" + keyid + "-*.j\" \"*.jpg\"";
 #else
         command = "for file in " + path + "/" + keyid + "*.j; do mv $file ${file}pg; done";
 #endif
-        system(command.c_str());
+        sys_ret = system(command.c_str());
       }
 
       break;
@@ -4573,7 +4601,7 @@ Json::Value webpg::showPhotoCallback(
 
   std::string full_path = path + keyid + "-latest." + extension;
   response["photo"] = full_path;
-  std::cerr << response << std::endl;
+  response["sys_ret"] = sys_ret;
   return response;
 }
 
@@ -4819,21 +4847,21 @@ CURLcode sslContextCallback(CURL * curl, void * ctx, void * parm) {
 
     if (ret != SSL_SUCCESS) {
         if (ret == SSL_BAD_FILETYPE)
-          std::cerr << "file is the wrong format" << std::endl;
+          debug("file is the wrong format");
 
         if (ret == SSL_BAD_FILE)
-          std::cerr << "file doesn't exist, can't be read, or is corrupted." << std::endl;
+          debug("file doesn't exist, can't be read, or is corrupted.");
 
         if (ret == MEMORY_E) {
-          std::cerr << "out of memory condition occurs." << std::endl;
+          debug("out of memory condition occurs.");
           return CURLE_OUT_OF_MEMORY;
         }
 
         if (ret == ASN_INPUT_E)
-          std::cerr << "Base16 decoding fails on the file." << std::endl;
+          debug("Base16 decoding fails on the file.");
 
         if (ret == BUFFER_E)
-          std::cerr << "chain buffer is bigger than the receiving buffer." << std::endl;
+          debug("chain buffer is bigger than the receiving buffer.");
 
         return CURLE_SSL_CERTPROBLEM;
     }
@@ -5059,328 +5087,273 @@ Json::Value webpg::checkForUpdate(const boost::optional<bool> force) {
   return res;
 }
 
-#ifdef H_LIBWEBPG // Do not include these methods when compiling the binary
-// exported methods
-webpg webpg;
-extern "C" const char* webpg_version_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.get_version().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* webpg_status_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.get_webpg_status().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* getPublicKeyList_r(bool fast, bool async, STATUS_PROGRESS_CB callback) {
-  Json::Value ret = webpg.getPublicKeyList(fast, async, callback);
-  Json::FastWriter writer;
-  fnOutputString = writer.write(ret);
-
-  if (callback && !async) {
-    callback(fnOutputString.c_str(), "onstatusprogress");
-    return "{\"status\": \"queued\"}";
-  }
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* getPrivateKeyList_r(bool fast, bool async, STATUS_PROGRESS_CB callback) {
-  Json::Value ret = webpg.getPrivateKeyList(fast, async, callback);
-  Json::FastWriter writer;
-  fnOutputString = writer.write(ret);
-
-  if (callback) {
-    callback(fnOutputString.c_str(), "onstatusprogress");
-    return "{\"status\": \"queued\"}";
-  }
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* getNamedKey_r(const char* name, STATUS_PROGRESS_CB callback) {
-  fnOutputString = webpg.getNamedKey(name).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str(), "onstatusprogress");
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* getExternalKey_r(const char* name,
-                                        STATUS_PROGRESS_CB callback) {
-  fnOutputString = webpg.getExternalKey(name).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str(), "onstatusprogress");
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSetPreference_r(const char* preference,
-                                          const char* pref_value,
-                                          EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgSetPreference(preference, pref_value).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgGetPreference_r(const char* preference,
-                                          EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgGetPreference(preference).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSetGroup_r(const char* group,
-                                     const char* group_value,
-                                     EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgSetGroup(group, group_value).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* setTempGPGOption_r(const char* option,
-                                          const char* value,
-                                          EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.setTempGPGOption(option, value).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* restoreGPGConfig_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.restoreGPGConfig().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSetHomeDir_r(const char* gnupg_path,
-                                       EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgSetHomeDir(gnupg_path).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgGetHomeDir_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgGetHomeDir().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSetBinary_r(const char* gnupg_exec,
-                                       EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgSetBinary(gnupg_exec).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgGetBinary_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgGetBinary().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSetGPGConf_r(const char* gpgconf_exec,
-                                       EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgSetGPGConf(gpgconf_exec).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgGetGPGConf_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.gpgGetGPGConf().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* getTemporaryPath_r(EXTERN_FNC_CB callback) {
-  fnOutputString = webpg.getTemporaryPath().toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgEncrypt_r(const char* data,
-                                    const char* enc_to_keyids[],
-                                    int key_count,
-                                    EXTERN_FNC_CB callback) {
-  Json::Value _enc_to_keyids;
-
-  for (int i=0; i < key_count + 1; i++)
-    _enc_to_keyids.append(enc_to_keyids[i]);
-
-  fnOutputString = webpg.gpgEncrypt(data,
-                                    _enc_to_keyids,
-                                    false,
-                                    NULL).toStyledString();
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgEncryptSign_r(const char* data,
-                                        const char* enc_to_keyids[],
-                                        int key_count,
-                                        const char* signers[],
-                                        int signer_count,
-                                        EXTERN_FNC_CB callback) {
-  Json::Value _enc_to_keyids, _signers;
-
-  for (int i=0; i < key_count + 1; i++)
-    _enc_to_keyids.append(enc_to_keyids[i]);
-
-  for (int i=0; i < signer_count + 1; i++)
-    _signers.append(signers[i]);
-
-  fnOutputString = webpg.gpgEncrypt(data,
-                                    _enc_to_keyids,
-                                    true,
-                                    _signers).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSymmetricEnc_r(const char* data,
-                                         bool sign,
-                                         const char* signers[],
-                                         int signer_count,
-                                         EXTERN_FNC_CB callback) {
-  Json::Value _signers;
-
-  for (int i=0; i < signer_count + 1; i++)
-    _signers.append(signers[i]);
-
-  fnOutputString = webpg.gpgSymmetricEncrypt(data,
-                                             sign,
-                                            _signers).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgDecrypt_r(const char* data,
-                                    EXTERN_FNC_CB callback) {
-
-  fnOutputString = webpg.gpgDecrypt(data).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgVerify_r(const char* data,
-                                   const char* plaintext,
-                                   EXTERN_FNC_CB callback) {
-
-  std::string pt;
-  if (strlen (plaintext) > 1)
-    pt = plaintext;
-
-  fnOutputString = webpg.gpgVerify(data, pt).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgSignText_r(const char* data,
-                                     const char* signers[],
-                                     int key_count,
-                                     int sign_mode,
-                                     EXTERN_FNC_CB callback) {
-  Json::Value _signers;
-
-  for (int i=0; i < key_count + 1; i++)
-    _signers.append(signers[i]);
-
-  fnOutputString = webpg.gpgSignText(data,
-                                    _signers,
-                                    sign_mode).toStyledString();
-
-  if (callback)
-    callback(fnOutputString.c_str());
-
-  return fnOutputString.c_str();
-}
-
-extern "C" const char* gpgGenSubKey_r(const char* keyid,
-                                      const char* subkey_type,
-                                      const char* subkey_length,
-                                      const char* subkey_expire,
-                                      bool sign_flag,
-                                      bool enc_flag,
-                                      bool auth_flag,
-                                      GENKEY_PROGRESS_CB callback) {
-
-  fnOutputString = webpg.gpgGenSubKey(keyid,
-                                      subkey_type,
-                                      subkey_length,
-                                      subkey_expire,
-                                      sign_flag,
-                                      enc_flag,
-                                      auth_flag,
-                                      callback);
-
-  return fnOutputString.c_str();
-}
-// end exported methods
-#endif // H_LIBWEBPG
-
 #ifndef H_LIBWEBPG // Do not include this method when compiling the lib
-int main(int argc, char* argv[]) {
-  webpg webpg;
+void webpg::processMessage(std::string msg) {
+  debug(msg.c_str());
+  debug("begin process message");
+  // Define the "res" object which is output on stdout after function
+  //  invocation.
+  Json::Value res(Json::objectValue);
 
+  // Create our objects to store the message in a usable format.
+  Json::Value input_json;
+  Json::Reader _action_reader;
+  debug("begin parse..");
+  // Parse the message passed on stdin as a Json::Value
+  bool parseResult = _action_reader.parse(msg, input_json);
+  std::string func = "unknown";
+
+  if (parseResult == false)
+    res = _action_reader.getFormatedErrorMessages();
+
+  // Check for the "func" member, which indicates a function is described.
+  if (input_json.isMember("func") == true) {
+    // Get the name of the function.
+    func = input_json["func"].asString();
+    // Pack the parameters (if any) into the params Json::Value object.
+    Json::Value params(Json::objectValue);
+    params = input_json["params"];
+
+    if (func == "get_version")
+      res["version"] = webpg::get_version();
+    else if (func == "get_webpg_status")
+      res = webpg::get_webpg_status();
+    else if (func == "getKeyCount")
+      res = webpg::getKeyCount();
+    else if (func == "getNamedKey")
+      res = webpg::getNamedKey(
+        params["name"].asString(),
+        params["fastListMode"].asBool()
+      );
+    else if (func == "getPublicKeyList")
+      res = webpg::getPublicKeyList(
+        params["fastListMode"].asBool(),
+        params["async"].asBool()
+      );
+    else if (func == "getPrivateKeyList")
+      res = webpg::getPrivateKeyList(
+        params["fastListMode"].asBool(),
+        params["async"].asBool()
+      );
+    else if (func == "getExternalKey")
+      res = webpg::getExternalKey(
+        params["name"].asString()
+      );
+    else if (func == "gpgSetPreference")
+      res["result"] = webpg::gpgSetPreference(params[0].asString(),
+                                              params[1].asString());
+    else if (func == "gpgGetPreference")
+      res = webpg::gpgGetPreference(params[0].asString());
+    else if (func == "gpgSetGroup")
+      res["result"] = webpg::gpgSetGroup(params[0].asString(), params[1].asString());
+    else if (func == "gpgSetHomeDir")
+      res["result"] = webpg::gpgSetHomeDir(params[0].asString());
+    else if (func == "gpgGetHomeDir")
+      res["result"] = webpg::gpgGetHomeDir();
+    else if (func == "gpgSetBinary")
+      res["result"] = webpg::gpgSetBinary(params[0].asString());
+    else if (func == "gpgGetBinary")
+      res["result"] = webpg::gpgGetBinary();
+    else if (func == "gpgSetGPGConf")
+      res["result"] = webpg::gpgSetGPGConf(params[0].asString());
+    else if (func == "gpgGetGPGConf")
+      res["result"] = webpg::gpgGetGPGConf();
+    else if (func == "gpgEncrypt")
+      res = webpg::gpgEncrypt(params["text"].asString(),
+                             params["recipients"],
+                             params["sign"].asBool(),
+                             params["signers"]);
+    else if (func == "gpgEncryptSign")
+      res = webpg::gpgEncryptSign(params["text"].asString(),
+                             params["recipients"],
+                             params["signers"]);
+    else if (func == "gpgSymmetricEncrypt")
+      res = webpg::gpgSymmetricEncrypt(params["text"].asString(),
+                                      params["sign"].asBool(),
+                                      params["signers"]);
+    else if (func == "gpgDecrypt")
+      res = webpg::gpgDecrypt(params[0].asString());
+    else if (func == "gpgVerify")
+      res = webpg::gpgVerify(params["data"].asString(),
+                            std::string(params["plaintext"].asString().c_str()?:""));
+    else if (func == "gpgSignText")
+      res = webpg::gpgSignText(params["text"].asString(),
+                              params["signers"],
+                              params["signType"].asInt());
+    else if (func == "gpgSignUID")
+      res = webpg::gpgSignUID(params[0].asString(),
+                             params[1].asInt(),
+                             params[2].asString(),
+                             params[3].asInt(),
+                             params[4].asInt(),
+                             params[5].asInt(),
+                             params[6].asString(),
+                             params[7].asString());
+    else if (func == "gpgDeleteUIDSign")
+      res = webpg::gpgDeleteUIDSign(params[0].asString(),
+                                   params[1].asInt(),
+                                   params[2].asInt());
+    else if (func == "gpgEnableKey")
+      res = webpg::gpgEnableKey(params[0].asString());
+    else if (func == "gpgDisableKey")
+      res = webpg::gpgDisableKey(params[0].asString());
+    else if (func == "gpgGenKey")
+      res = webpg::gpgGenKey(params[0].asString(),
+                            params[1].asString(),
+                            params[2].asString(),
+                            params[3].asString(),
+                            params[4].asString(),
+                            params[5].asString(),
+                            params[6].asString(),
+                            params[7].asString(),
+                            params[8].asString(),
+                            NULL);
+    else if (func == "gpgGenSubKey")
+      res = webpg::gpgGenSubKey(params[0].asString(),
+                               params[1].asString(),
+                               params[2].asString(),
+                               params[3].asString(),
+                               params[4].asBool(),
+                               params[5].asBool(),
+                               params[6].asBool(),
+                               NULL);
+    else if (func == "gpgImportKey")
+      res = webpg::gpgImportKey(params[0].asString());
+    else if (func == "gpgImportExternalKey")
+      res = webpg::gpgImportExternalKey(params[0].asString());
+    else if (func == "gpgDeletePublicKey")
+      res = webpg::gpgDeletePublicKey(params[0].asString());
+    else if (func == "gpgDeletePrivateKey")
+      res = webpg::gpgDeletePrivateKey(params[0].asString());
+    else if (func == "gpgDeletePrivateSubKey")
+      res = webpg::gpgDeletePrivateSubKey(params[0].asString(),
+                                         params[1].asInt());
+    else if (func == "gpgSetKeyTrust")
+      res = webpg::gpgSetKeyTrust(params[0].asString(),
+                                 params[1].asInt());
+    else if (func == "gpgAddUID")
+      res = webpg::gpgAddUID(params[0].asString(),
+                            params[1].asString(),
+                            params[2].asString(),
+                            params[3].asString());
+    else if (func == "gpgDeleteUID")
+      res = webpg::gpgDeleteUID(params[0].asString(), params[1].asInt());
+    else if (func == "gpgSetPrimaryUID")
+      res = webpg::gpgSetPrimaryUID(params[0].asString(),
+                                   params[1].asInt());
+    else if (func == "gpgSetSubkeyExpire")
+      res = webpg::gpgSetSubkeyExpire(params[0].asString(),
+                                     params[1].asInt(),
+                                     params[2].asInt());
+    else if (func == "gpgSetPubkeyExpire")
+      res = webpg::gpgSetPubkeyExpire(params[0].asString(),
+                                     params[1].asInt());
+    else if (func == "gpgExportPublicKey")
+      res = webpg::gpgExportPublicKey(params[0].asString());
+    else if (func == "gpgPublishPublicKey")
+      res = webpg::gpgPublishPublicKey(params[0].asString());
+    else if (func == "gpgRevokeKey")
+      res = webpg::gpgRevokeKey(params[0].asString(),
+                               params[1].asInt(),
+                               params[2].asInt(),
+                               params[3].asString());
+    else if (func == "gpgRevokeUID")
+      res = webpg::gpgRevokeUID(params[0].asString(),
+                               params[1].asInt(),
+                               params[2].asInt(),
+                               params[3].asString());
+    else if (func == "gpgRevokeSignature")
+      res = webpg::gpgRevokeSignature(params[0].asString(),
+                                     params[1].asInt(),
+                                     params[2].asInt(),
+                                     params[3].asInt(),
+                                     params[4].asString());
+    else if (func == "gpgChangePassphrase")
+      res = webpg::gpgChangePassphrase(params[0].asString());
+    else if (func == "gpgShowPhoto")
+      webpg::gpgShowPhoto(params[0].asString());
+    else if (func == "gpgAddPhoto")
+      res = webpg::gpgAddPhoto(params["keyid"].asString(),
+                              params["filename"].asString(),
+                              params["data"].asString());
+    else if (func == "gpgGetPhotoInfo")
+      res = webpg::gpgGetPhotoInfo(params[0].asString());
+    else if (func == "showPhotoCallback") {
+      res = webpg::showPhotoCallback(params["keyid"].asString(),
+                                    params["path"].asString(),
+                                    params["extension"].asString(),
+                                    params["index"].asInt(),
+                                    params["count"].asInt());
+    } else if (func == "setTempGPGOption") {
+      webpg::setTempGPGOption(params["option"].asString(),
+                             params["value"].asString());
+      res["result"] = true;
+    } else if (func == "restoreGPGConfig")
+      res["result"] = webpg::restoreGPGConfig();
+    else if (func == "getTemporaryPath")
+      res["result"] = webpg::getTemporaryPath();
+    else if (func == "sendMessage")
+      res = webpg::sendMessage(params);
+    else if (func == "quotedPrintableDecode")
+      res = webpg::quotedPrintableDecode(params[0].asString());
+    else if (func == "verifyPGPMimeMessage")
+      res = webpg::verifyPGPMimeMessage(params[0].asString());
+    else if (func == "checkForUpdate")
+      res = webpg::checkForUpdate(params[0].asBool());
+    else
+      res = get_error_map(__func__,
+                          GPG_ERR_UNKNOWN_COMMAND,
+                          __LINE__,
+                          __FILE__);
+  }
+  if (res.isObject())
+    res["func"] = func;
+
+  writeOut(res, parseResult);
+}
+
+int webpg::listen() {
+  debug("listen start");
+  unsigned int len = 0;
+
+  std::cout.sync_with_stdio(false);
+  std::cin.sync_with_stdio(false);
+
+  while (!feof(stdin) && !ferror(stdin)) {
+    debug("begin loop");
+    size_t frres = 0;
+
+    frres = fread((char*) &len, sizeof(len), 1, stdin);
+
+    if (frres < 1) {
+      debug("exiting");
+      return -1;
+    }
+
+    char *str = new char[len];
+
+    frres = fread(str, sizeof(char), len, stdin);
+    debug(str);
+
+    if (frres == 0) {
+      debug("exiting");
+      return -1;
+    }
+
+    std::string message(str, len);
+
+    webpg::processMessage(message);
+
+    delete[] str;
+    clearerr(stdin);
+    debug("end loop");
+  }
+  debug("listen exit");
+  return 0;
+}
+
+int main(int argc, char* argv[]) {
+  //freopen ("/tmp/webpg_out.txt", "a", stderr);
   if (argv[1] != NULL) {
     std::string inp = argv[1];
     bool nativeHost = false;
@@ -5388,241 +5361,32 @@ int main(int argc, char* argv[]) {
     for (int i=1; i < argc; i++) {
         if (string(argv[i]).find("chrome-extension://") != std::string::npos) {
             nativeHost = true;
+            WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NATIVEHOST;
+            break;
+        } else if (string(argv[i]).find("chrome://webpg-firefox/?system=child_process") != std::string::npos) {
+            nativeHost = true;
+            WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_CHILDPROCESS;
             break;
         }
     }
 
-    unsigned int len = 0;
-    // Define the "res" object which is output on stdout after function
-    //  invocation.
-    Json::Value res(Json::objectValue);
+    webpg webpg;
 
     // Check if this is being called as a native messaging host from chrome
     if (nativeHost == true) {
-      WEBPG_PLUGIN_TYPE = WEBPG_PLUGIN_TYPE_NATIVEHOST;
-      // Reset inp
-      inp = "";
-
-      std::cin.read((char*) &len, sizeof(len));
-
-      char *str = new char[len];
-
-      std::cout.sync_with_stdio(false);
-      std::cin.sync_with_stdio(false);
-
-      size_t frres = fread(str, sizeof(char), len, stdin);
-
-      if (frres)
-        inp += str;
+      bool needToExit = false;
+      while (!needToExit) {
+        int status = webpg.listen();
+        if (status != 0)
+          needToExit = true;
+      }
+    } else {
+      webpg.processMessage(inp);
     }
 
-    // Create our objects to store the message in a usable format.
-    Json::Value input_json;
-    Json::Reader _action_reader;
-
-    // Parse the message passed on stdin as a Json::Value
-    bool parseResult = _action_reader.parse(inp, input_json);
-    if (parseResult == false)
-      res = _action_reader.getFormatedErrorMessages();
-
-    // Check for the "func" member, which indicates a function is described.
-    if (input_json.isMember("func") == true) {
-      // Get the name of the function.
-      std::string func = input_json["func"].asString();
-      // Pack the parameters (if any) into the params Json::Value object.
-      Json::Value params(Json::objectValue);
-      params = input_json["params"];
-
-      if (func == "get_version")
-        res = webpg.get_version();
-      else if (func == "get_webpg_status")
-        res = webpg.get_webpg_status();
-      else if (func == "getKeyCount")
-        res = webpg.getKeyCount();
-      else if (func == "getNamedKey")
-        res = webpg.getNamedKey(
-          params["name"].asString(),
-          params["fastListMode"].asBool()
-        );
-      else if (func == "getPublicKeyList")
-        res = webpg.getPublicKeyList(
-          params["fastListMode"].asBool(),
-          params["async"].asBool()
-        );
-      else if (func == "getPrivateKeyList")
-        res = webpg.getPrivateKeyList(
-          params["fastListMode"].asBool(),
-          params["async"].asBool()
-        );
-      else if (func == "getExternalKey")
-        res = webpg.getExternalKey(
-          params["name"].asString()
-        );
-      else if (func == "gpgSetPreference")
-        res = webpg.gpgSetPreference(params[0].asString(),
-                                     params[1].asString());
-      else if (func == "gpgGetPreference")
-        res = webpg.gpgGetPreference(params[0].asString());
-      else if (func == "gpgSetGroup")
-        res = webpg.gpgSetGroup(params[0].asString(), params[1].asString());
-      else if (func == "gpgSetHomeDir")
-        res = webpg.gpgSetHomeDir(params[0].asString());
-      else if (func == "gpgGetHomeDir")
-        res = webpg.gpgGetHomeDir();
-      else if (func == "gpgSetBinary")
-        res = webpg.gpgSetBinary(params[0].asString());
-      else if (func == "gpgGetBinary")
-        res = webpg.gpgGetBinary();
-      else if (func == "gpgSetGPGConf")
-        res = webpg.gpgSetGPGConf(params[0].asString());
-      else if (func == "gpgGetGPGConf")
-        res = webpg.gpgGetGPGConf();
-      else if (func == "gpgEncrypt")
-        res = webpg.gpgEncrypt(params["text"].asString(),
-                               params["recipients"],
-                               params["sign"].asBool(),
-                               params["signers"]);
-      else if (func == "gpgSymmetricEncrypt")
-        res = webpg.gpgSymmetricEncrypt(params["text"].asString(),
-                                        params["sign"].asBool(),
-                                        params["signers"]);
-      else if (func == "gpgDecrypt")
-        res = webpg.gpgDecrypt(params[0].asString());
-      else if (func == "gpgVerify")
-        res = webpg.gpgVerify(params["data"].asString(),
-                              params["plaintext"].asString());
-      else if (func == "gpgSignText")
-        res = webpg.gpgSignText(params["text"].asString(),
-                                params["signers"],
-                                params["signType"].asInt());
-      else if (func == "gpgSignUID")
-        res = webpg.gpgSignUID(params[0].asString(),
-                               params[1].asInt(),
-                               params[2].asString(),
-                               params[3].asInt(),
-                               params[4].asInt(),
-                               params[5].asInt(),
-                               params[6].asString(),
-                               params[7].asString());
-      else if (func == "gpgDeleteUIDSign")
-        res = webpg.gpgDeleteUIDSign(params[0].asString(),
-                                     params[1].asInt(),
-                                     params[2].asInt());
-      else if (func == "gpgEnableKey")
-        res = webpg.gpgEnableKey(params[0].asString());
-      else if (func == "gpgDisableKey")
-        res = webpg.gpgDisableKey(params[0].asString());
-      else if (func == "gpgGenKey")
-        res = webpg.gpgGenKey(params[0].asString(),
-                              params[1].asString(),
-                              params[2].asString(),
-                              params[3].asString(),
-                              params[4].asString(),
-                              params[5].asString(),
-                              params[6].asString(),
-                              params[7].asString(),
-                              params[8].asString(),
-                              NULL);
-      else if (func == "gpgGenSubKey")
-        res = webpg.gpgGenSubKey(params[0].asString(),
-                                 params[1].asString(),
-                                 params[2].asString(),
-                                 params[3].asString(),
-                                 params[4].asBool(),
-                                 params[5].asBool(),
-                                 params[6].asBool(),
-                                 NULL);
-      else if (func == "gpgImportKey")
-        res = webpg.gpgImportKey(params[0].asString());
-      else if (func == "gpgImportExternalKey")
-        res = webpg.gpgImportExternalKey(params[0].asString());
-      else if (func == "gpgDeletePublicKey")
-        res = webpg.gpgDeletePublicKey(params[0].asString());
-      else if (func == "gpgDeletePrivateKey")
-        res = webpg.gpgDeletePrivateKey(params[0].asString());
-      else if (func == "gpgDeletePrivateSubKey")
-        res = webpg.gpgDeletePrivateSubKey(params[0].asString(),
-                                           params[1].asInt());
-      else if (func == "gpgSetKeyTrust")
-        res = webpg.gpgSetKeyTrust(params[0].asString(),
-                                   params[1].asInt());
-      else if (func == "gpgAddUID")
-        res = webpg.gpgAddUID(params[0].asString(),
-                              params[1].asString(),
-                              params[2].asString(),
-                              params[3].asString());
-      else if (func == "gpgDeleteUID")
-        res = webpg.gpgDeleteUID(params[0].asString(), params[1].asInt());
-      else if (func == "gpgSetPrimaryUID")
-        res = webpg.gpgSetPrimaryUID(params[0].asString(),
-                                     params[1].asInt());
-      else if (func == "gpgSetSubkeyExpire")
-        res = webpg.gpgSetSubkeyExpire(params[0].asString(),
-                                       params[1].asInt(),
-                                       params[2].asInt());
-      else if (func == "gpgSetPubkeyExpire")
-        res = webpg.gpgSetPubkeyExpire(params[0].asString(),
-                                       params[1].asInt());
-      else if (func == "gpgExportPublicKey")
-        res = webpg.gpgExportPublicKey(params[0].asString());
-      else if (func == "gpgPublishPublicKey")
-        res = webpg.gpgPublishPublicKey(params[0].asString());
-      else if (func == "gpgRevokeKey")
-        res = webpg.gpgRevokeKey(params[0].asString(),
-                                 params[1].asInt(),
-                                 params[2].asInt(),
-                                 params[3].asString());
-      else if (func == "gpgRevokeUID")
-        res = webpg.gpgRevokeUID(params[0].asString(),
-                                 params[1].asInt(),
-                                 params[2].asInt(),
-                                 params[3].asString());
-      else if (func == "gpgRevokeSignature")
-        res = webpg.gpgRevokeSignature(params[0].asString(),
-                                       params[1].asInt(),
-                                       params[2].asInt(),
-                                       params[3].asInt(),
-                                       params[4].asString());
-      else if (func == "gpgChangePassphrase")
-        res = webpg.gpgChangePassphrase(params[0].asString());
-      else if (func == "gpgShowPhoto")
-        webpg.gpgShowPhoto(params[0].asString());
-      else if (func == "gpgAddPhoto")
-        res = webpg.gpgAddPhoto(params[0].asString(),
-                                params[1].asString(),
-                                params[2].asString());
-      else if (func == "gpgGetPhotoInfo")
-        res = webpg.gpgGetPhotoInfo(params[0].asString());
-      else if (func == "showPhotoCallback") {
-        res = webpg.showPhotoCallback(params["keyid"].asString(),
-                                      params["path"].asString(),
-                                      params["extension"].asString(),
-                                      params["index"].asInt(),
-                                      params["count"].asInt());
-      } else if (func == "setTempGPGOption")
-        res = webpg.setTempGPGOption(params["option"].asString(),
-                                     params["value"].asString());
-      else if (func == "restoreGPGConfig")
-        res = webpg.restoreGPGConfig();
-      else if (func == "getTemporaryPath")
-        res = webpg.getTemporaryPath();
-      else if (func == "sendMessage")
-        res = webpg.sendMessage(params);
-      else if (func == "quotedPrintableDecode")
-        res = webpg.quotedPrintableDecode(params[0].asString());
-      else if (func == "verifyPGPMimeMessage")
-        res = webpg.verifyPGPMimeMessage(params[0].asString());
-      else if (func == "checkForUpdate")
-        res = webpg.checkForUpdate(params[0].asBool());
-      else
-        res = get_error_map(__func__,
-                            GPG_ERR_UNKNOWN_COMMAND,
-                            __LINE__,
-                            __FILE__);
-    }
-
-    writeOut(res, parseResult);
+    debug(inp);
   }
+  //fclose (stderr);
 
   return 0;
 }
