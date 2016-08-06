@@ -130,6 +130,15 @@ enum {
     RSA_PAD_E           = -201,  /* RSA Padding Error */
     LENGTH_ONLY_E       = -202,  /* Returning output length only */
 
+    IN_CORE_FIPS_E      = -203,  /* In Core Integrity check failure */
+    AES_KAT_FIPS_E      = -204,  /* AES KAT failure */
+    DES3_KAT_FIPS_E     = -205,  /* DES3 KAT failure */
+    HMAC_KAT_FIPS_E     = -206,  /* HMAC KAT failure */
+    RSA_KAT_FIPS_E      = -207,  /* RSA KAT failure */
+    DRBG_KAT_FIPS_E     = -208,  /* HASH DRBG KAT failure */
+    DRBG_CONT_FIPS_E    = -209,  /* HASH DRBG Continious test failure */
+    AESGCM_KAT_FIPS_E   = -210,  /* AESGCM KAT failure */
+
     MIN_CODE_E          = -300   /* errors -101 - -299 */
 };
 

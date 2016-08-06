@@ -1,4 +1,4 @@
-/* cyassl_version.h.in
+/* memory.h
  *
  * Copyright (C) 2006-2014 wolfSSL Inc.
  *
@@ -19,17 +19,37 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+/* submitted by eof */
 
-#pragma once
+
+#ifndef CYASSL_MEMORY_H
+#define CYASSL_MEMORY_H
+
+#include <stdlib.h>
 
 #ifdef __cplusplus
-extern "C" {
+    extern "C" {
 #endif
 
-#define LIBCYASSL_VERSION_STRING "3.3.2"
-#define LIBCYASSL_VERSION_HEX 0x03003002
+
+typedef void *(*CyaSSL_Malloc_cb)(size_t size);
+typedef void (*CyaSSL_Free_cb)(void *ptr);
+typedef void *(*CyaSSL_Realloc_cb)(void *ptr, size_t size);
+
+
+/* Public set function */
+CYASSL_API int CyaSSL_SetAllocators(CyaSSL_Malloc_cb  malloc_function,
+                                    CyaSSL_Free_cb    free_function,
+                                    CyaSSL_Realloc_cb realloc_function);
+
+/* Public in case user app wants to use XMALLOC/XFREE */
+CYASSL_API void* CyaSSL_Malloc(size_t size);
+CYASSL_API void  CyaSSL_Free(void *ptr);
+CYASSL_API void* CyaSSL_Realloc(void *ptr, size_t size);
+
 
 #ifdef __cplusplus
 }
 #endif
 
+#endif /* CYASSL_MEMORY_H */
