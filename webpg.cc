@@ -774,6 +774,7 @@ void writeOut(const Json::Value str, const bool parse=false) {
   debug(ret.c_str());
 
   std::cout << ret;
+  std::cerr << std::endl;
 }
 
 void nativeCallback(const char* type, const char* data)
@@ -5308,6 +5309,10 @@ void webpg::processMessage(std::string msg) {
   }
   if (res.isObject())
     res["func"] = func;
+
+  if (input_json.isMember("_id") && res.isObject()) {
+    res["_id"] = input_json["_id"];
+  }
 
   writeOut(res, parseResult);
 }
