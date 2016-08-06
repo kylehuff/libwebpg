@@ -43,9 +43,9 @@ void wdebug(std::string msg, int line, const std::string& func) {
 }
 
 #ifdef DEBUG
-#define debug(msg) (wdebug((std::string) msg, __LINE__, __func__))
+#define debug(msg) wdebug((std::string) msg, __LINE__, __func__)
 #else
-#define debug(msg) ()
+#define debug(msg)
 #endif
 
 // A global holder for the current edit_fnc status

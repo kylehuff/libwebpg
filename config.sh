@@ -36,7 +36,7 @@ case "$UNAME" in
     PLATFORM='macosx'
     DISTDIR='Darwin_x86_64-gcc'
     SOEXT='.dylib'
-    CXXFLAGS='-arch i386 -arch x86_64 -DFB_MACOSX '
+    CXXFLAGS='-arch i386 -arch x86_64 -DFB_MACOSX -stdlib=libstdc++ '
     PLDFLAGS="${PROJECT_ROOT}/libs/libcurl/${DISTDIR}/libcyassl.a \
 	      ${PROJECT_ROOT}/libs/libcurl/${DISTDIR}/libz.a"
     ;;
@@ -147,7 +147,9 @@ then
 elif [ -z "${CXX##clang*}" ]
 then
   >&2 echo "Added flags clang++"
-  STATIC_GCC="-static-libgcc"
+  if [ "$PLATFORM" != "macosx" ]; then
+    STATIC_GCC="-static-libgcc"
+  fi
 else
   >&2 echo "Added flags ${CXX}"
   #CXXFLAGS+=" -Wno-unused-local-typedefs"
@@ -166,7 +168,7 @@ CXXFLAGS+=" -I $QUOTE$PROJECT_ROOT/libs/boost/include$QUOTE
   -I $QUOTE$PROJECT_ROOT/libs/libgpg-error/$DISTDIR/include$QUOTE
   -I $QUOTE$PROJECT_ROOT/libs/libmimetic/$DISTDIR/include$QUOTE
   -I $QUOTE$PROJECT_ROOT/libs/libcurl/$DISTDIR/include$QUOTE
-  -D _FILE_OFFSET_BITS=64 -DDEBUG -DCURL_STATICLIB
+  -D _FILE_OFFSET_BITS=64 -DCURL_STATICLIB
   -g -Wall -O2 -fPIC $STATIC_GCC"
 
 if [ $BUILDTYPE == "STATIC" ]
